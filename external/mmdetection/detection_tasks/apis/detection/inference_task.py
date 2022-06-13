@@ -248,12 +248,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                 dataset_item.append_metadata_item(active_score, model=self._task_environment.model)
 
 
-<<<<<<< HEAD
-    @check_input_parameters_type({"dataset": DatasetParamTypeCheck})
-    def infer(self, dataset: DatasetEntity, inference_parameters: Optional[InferenceParameters] = None) -> DatasetEntity:
-=======
     def infer(self, dataset: DatasetEntity, inference_parameters: Optional[InferenceParameters] = None, class_wise: Optional[bool] = False) -> DatasetEntity:
->>>>>>> df91b3412a9035555ee4ce2de7826f7a193abee8
         """ Analyzes a dataset using the latest inference model. """
 
         logger.info('Infer the model on the dataset')
