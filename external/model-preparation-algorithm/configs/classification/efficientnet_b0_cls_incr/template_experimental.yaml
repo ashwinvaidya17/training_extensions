@@ -8,7 +8,7 @@ summary: Class-Incremental Image Classification for EfficientNet-B0
 application: ~
 
 # Algo backend.
-framework: OTEClassification v1.2.3
+framework: MPA v1.1.0
 
 # Task implementations.
 entrypoints:

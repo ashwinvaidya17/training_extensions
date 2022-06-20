@@ -1,14 +1,14 @@
 # Description.
-model_template_id: ClassIncremental_Image_Classification_EfficinetNet-B0
-name: EfficientNet-B0-ClsIncr
+model_template_id: ClassIncremental_Image_Classification_EfficinetNet-V2-S
+name: EfficientNet-V2-S-ClsIncr
 task_type: CLASSIFICATION
 task_family: VISION
 instantiation: "CLASS"
-summary: Class-Incremental Image Classification for EfficientNet-B0
+summary: Class-Incremental Image Classification for EfficientNet-V2-S
 application: ~
 
 # Algo backend.
-framework: OTEClassification v1.2.3
+framework: MPA v1.1.0
 
 # Task implementations.
 entrypoints:
@@ -42,5 +42,5 @@ training_targets:
   - CPU
 
 # Stats.
-gigaflops: 0.81
-size: 4.09
+gigaflops: 5.76
+size: 20.23
