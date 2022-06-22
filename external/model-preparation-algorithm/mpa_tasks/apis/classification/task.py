@@ -72,7 +72,7 @@ class ClassificationInferenceTask(BaseTask, IInferenceTask, IExportTask, IEvalua
         dataset_size = len(dataset)
         for i, (dataset_item, prediction_item) in enumerate(zip(dataset, predictions)):
             label_idx = prediction_item.argmax()
-            probability = prediction_item[label_idx]
+            probability = float(prediction_item[label_idx])
             dataset_item.append_labels([ScoredLabel(self._labels[label_idx], probability=probability)])
             update_progress_callback(int(i / dataset_size * 100))
         return dataset

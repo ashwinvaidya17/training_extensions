@@ -44,12 +44,12 @@ class MPAClsDataset(BaseDataset):
         self.load_annotations()
 
     def load_annotations(self):
+        self.label_idx = {label.id: i for i, label in enumerate(self.labels)}
         for dataset_item in self.ote_dataset:
             if dataset_item.get_annotations() == []:
                 label = None
             else:
-                label_idx = {label.id: i for i, label in enumerate(self.labels)}
-                label = label_idx[dataset_item.get_annotations()[0].get_labels()[0].id_]
+                label = self.label_idx[dataset_item.get_annotations()[0].get_labels()[0].id_]
             self.gt_labels.append(label)
         self.gt_labels = np.array(self.gt_labels)
 
