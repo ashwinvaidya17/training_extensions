@@ -260,6 +260,7 @@ class SegmentationInferenceTask(BaseTask, IInferenceTask, IExportTask, IEvaluati
             if not cfg:
                 continue
             if cfg.type == 'RepeatDataset':
+                cfg.adaptive_repeat=True
                 cfg = cfg.dataset
             cfg.type = 'MPASegIncrDataset'
             cfg.domain = domain
