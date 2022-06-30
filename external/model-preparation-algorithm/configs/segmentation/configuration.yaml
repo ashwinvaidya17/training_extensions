@@ -199,11 +199,7 @@ algo_backend:
     enum_name: TrainType
     header: train type
     options:
-      FineTune: "FineTune"
-      SemiSupervised: "SemiSupervised"
-      SelfSupervised: "SelfSupervised"
       Incremental: "Incremental"
-      Imbalanced: "Imbalanced"
     type: SELECTABLE
     ui_rules:
       action: DISABLE_EDITING
@@ -217,96 +213,3 @@ algo_backend:
   visible_in_ui: true
 type: CONFIGURABLE_PARAMETERS
 visible_in_ui: true
-pot_parameters:
-  description: POT Parameters
-  header: POT Parameters
-  preset:
-    affects_outcome_of: NONE
-    default_value: Performance
-    description: Quantization preset that defines quantization scheme
-    editable: True
-    enum_name: POTQuantizationPreset
-    header: Preset
-    options:
-      MIXED: Mixed
-      PERFORMANCE: Performance
-    type: SELECTABLE
-    ui_rules:
-      action: DISABLE_EDITING
-      operator: AND
-      rules: []
-      type: UI_RULES
-    value: Performance
-    visible_in_ui: True
-    warning: null
-  stat_subset_size:
-    affects_outcome_of: NONE
-    default_value: 300
-    description: Number of data samples used for post-training optimization
-    editable: True
-    header: Number of data samples
-    max_value: 9223372036854775807
-    min_value: 1
-    type: INTEGER
-    ui_rules:
-      action: DISABLE_EDITING
-      operator: AND
-      rules: []
-      type: UI_RULES
-    value: 300
-    visible_in_ui: True
-    warning: null
-  type: PARAMETER_GROUP
-  visible_in_ui: true
-nncf_optimization:
-  description: Optimization by NNCF
-  header: Optimization by NNCF
-  enable_quantization:
-    affects_outcome_of: INFERENCE
-    default_value: True
-    description: Enable quantization algorithm
-    editable: false
-    header: Enable quantization algorithm
-    type: BOOLEAN
-    ui_rules:
-      action: DISABLE_EDITING
-      operator: AND
-      rules: []
-      type: UI_RULES
-    value: true
-    visible_in_ui: false
-    warning: null
-  enable_pruning:
-    affects_outcome_of: INFERENCE
-    default_value: false
-    description: Enable filter pruning algorithm
-    editable: true
-    header: Enable filter pruning algorithm
-    type: BOOLEAN
-    ui_rules:
-      action: DISABLE_EDITING
-      operator: AND
-      rules: []
-      type: UI_RULES
-    value: false
-    visible_in_ui: true
-    warning: null
-  maximal_accuracy_degradation:
-    affects_outcome_of: NONE
-    default_value: 1.0
-    description: The maximal allowed accuracy metric drop in absolute values
-    editable: True
-    header: Maximum accuracy degradation
-    max_value: 100.0
-    min_value: 0.0
-    type: FLOAT
-    ui_rules:
-      action: DISABLE_EDITING
-      operator: AND
-      rules: []
-      type: UI_RULES
-    value: 1.0
-    visible_in_ui: True
-    warning: null
-  type: PARAMETER_GROUP
-  visible_in_ui: True
