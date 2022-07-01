@@ -173,7 +173,7 @@ def main():
     st = time.time()
     task.train(dataset, output_model, train_parameters=TrainParameters())
     en = time.time()
-    train_time = en-st
+    train_time = en - st
     print(f"Training time : {train_time}")
     save_model_data(output_model, args.save_model_to)
 
