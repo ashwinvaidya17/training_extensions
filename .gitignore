@@ -28,6 +28,7 @@ dist/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+mixed_det.sh
 
 # python version
 .python-version
