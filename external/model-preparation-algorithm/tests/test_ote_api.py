@@ -302,7 +302,7 @@ class TestMPADetAPI:
         detection_template = ["mobilenetv2_atss_cls_incr", "resnet50_vfnet_cls_incr"]
         for model_template in detection_template:
             parse_model_template(
-                osp.join("configs", "detection", model_template, "template.yaml")
+                osp.join("configs", "detection", model_template, "template*.yaml")
             )
 
     def init_environment(
