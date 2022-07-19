@@ -9,7 +9,7 @@ ignore_keys = [r'^backbone\.increase_modules\.', r'^backbone\.increase_modules\.
 
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
-    type='CascadeEncoderDecoder',
+    type='CascadeMultilabelSegmentor',
     num_stages=2,
     pretrained=None,
     backbone=dict(
@@ -125,13 +125,23 @@ model = dict(
                       loss_weight=1.0),
              ]),
     ],
+    multilabel_head=dict(
+        type='MultiLabelHead',
+        pre_stages=[40, 80, 160, 320],
+        num_classes=2,
+        in_channels=2048,
+        loss=dict(type='AsymmetricLoss'),
+        # loss=dict(type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
+    ),
     train_cfg=dict(
         mix_loss=dict(
             enable=False,
             weight=0.1
         ),
         loss_reweighting=dict(
-            weights={'decode_0.loss_seg': 0.9,
+            weights={
+                     'multilabel_loss' : 0.1,
+                     'decode_0.loss_seg': 0.9,
                      'decode_1.loss_seg': 1.0},
             momentum=0.1
         ),
@@ -193,7 +203,8 @@ checkpoint_config = dict(
 evaluation = dict(
     by_epoch=True,
     interval=1,
-    metric='mDice'
+    show_log=True,
+    metric='mIoU'
 )
 
 # yapf:disable

@@ -86,9 +86,9 @@ def patch_config(config: Config,
     # Patch data pipeline, making it OTE-compatible.
     patch_datasets(config)
 
-    if 'log_config' not in config:
-        config.log_config = ConfigDict()
-    config.log_config.hooks = []
+    # if 'log_config' not in config:
+    #     config.log_config = ConfigDict()
+    # config.log_config.hooks = []
 
     if 'evaluation' not in config:
         config.evaluation = ConfigDict()
