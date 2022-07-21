@@ -230,3 +230,15 @@ class OTEDataset(CustomDataset):
         dataset_item = self.ote_dataset[idx]
         labels = self.labels
         return get_annotation_mmdet_format(dataset_item, labels, self.domain)
+
+    def get_cat_ids(self, idx):
+        """Get category ids by index.
+
+        Args:
+            idx (int): Index of data.
+
+        Returns:
+            list[int]: All categories in the image of specified index.
+        """
+
+        return self.get_ann_info(idx)['labels'].astype(int).tolist()
