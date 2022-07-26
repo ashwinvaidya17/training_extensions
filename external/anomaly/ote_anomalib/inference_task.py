@@ -195,6 +195,10 @@ class AnomalyInferenceTask(IInferenceTask, IEvaluationTask, IExportTask, IUnload
             raise ValueError(f"Unknown task type: {self.task_type}")
         output_resultset.performance = metric.get_performance()
 
+        # temporary logging statement for debugging purposes
+        for gt_item, pred_item in zip(output_resultset.ground_truth_dataset, output_resultset.prediction_dataset):
+            logger.info(f"GT: {gt_item.get_shapes_labels()[0].name}, pred: {pred_item.get_shapes_labels()[0].name}")
+
         if self.task_type == TaskType.ANOMALY_CLASSIFICATION:
             accuracy = MetricsHelper.compute_accuracy(output_resultset).get_performance()
             output_resultset.performance.dashboard_metrics.extend(accuracy.dashboard_metrics)
