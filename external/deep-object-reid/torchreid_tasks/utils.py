@@ -124,7 +124,7 @@ class ClassificationDatasetAdapter(DatasetEntity):
             annotation = json.load(f)
             if 'hierarchy' not in annotation:
                 all_classes = sorted(annotation['classes'])
-                annotation_type = ClassificationType.MULTILABEL
+                annotation_type = None
                 groups = [[c] for c in all_classes]
             else:  # load multihead
                 all_classes = []
@@ -159,7 +159,12 @@ class ClassificationDatasetAdapter(DatasetEntity):
                 assert full_image_path
                 if not labels_idx:
                     img_wo_objects += 1
-                out_data.append((full_image_path, tuple(labels_idx)))
+                out_data.append((full_image_path, tuple(labels_idx), 0, 0, '', -1, -1))
+                if len(labels_idx) > 1 and annotation_type is None:
+                    annotation_type = ClassificationType.MULTILABEL
+            if annotation_type is None:
+                annotation_type = ClassificationType.MULTICLASS
+                groups = [all_classes]
             if img_wo_objects:
                 print(f'WARNING: there are {img_wo_objects} images without labels and will be treated as negatives')
         return (out_data, all_classes, groups), annotation_type
