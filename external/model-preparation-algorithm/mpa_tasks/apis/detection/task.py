@@ -216,6 +216,8 @@ class DetectionInferenceTask(BaseTask, IInferenceTask, IExportTask, IEvaluationT
             raise NotImplementedError(f'train type {train_type} is not implemented yet.')
 
         self._recipe_cfg = MPAConfig.fromfile(recipe)
+        if self.fp16:
+            self._recipe_cfg.optimizer_config={}
         self._patch_data_pipeline()
         self._patch_datasets(self._recipe_cfg, self._task_type.domain)  # for OTE compatibility
         self._patch_evaluation(self._recipe_cfg)  # for OTE compatibility
