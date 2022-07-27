@@ -32,6 +32,7 @@ DEFAULT_META_KEYS = (
 
 class BaseTask:
     def __init__(self, task_config, task_environment: TaskEnvironment):
+        self.fp16 = task_environment.fp16
         self._task_config = task_config
         self._task_environment = task_environment
         self._hyperparams = task_environment.get_hyper_parameters(self._task_config)

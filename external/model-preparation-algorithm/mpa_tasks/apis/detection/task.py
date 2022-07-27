@@ -226,6 +226,8 @@ class DetectionInferenceTask(BaseTask, IInferenceTask, IExportTask, IEvaluationT
         model_cfg = MPAConfig.fromfile(os.path.join(base_dir, 'model.py'))
         if len(self._anchors) != 0:
             self._update_anchors(model_cfg.model.bbox_head.anchor_generator, self._anchors)
+        if self.fp16:
+            model_cfg.fp16 = dict(loss_scale=512.)
         return model_cfg
 
     def _init_test_data_cfg(self, dataset: DatasetEntity):

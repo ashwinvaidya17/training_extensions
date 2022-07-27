@@ -189,7 +189,10 @@ class SegmentationInferenceTask(BaseTask, IInferenceTask, IExportTask, IEvaluati
 
     def _init_model_cfg(self):
         base_dir = os.path.abspath(os.path.dirname(self.template_file_path))
-        return MPAConfig.fromfile(os.path.join(base_dir, 'model.py'))
+        cfg = MPAConfig.fromfile(os.path.join(base_dir, 'model.py'))
+        if self.fp16:
+            cfg.optimizer_config = dict(type='Fp16OptimizerHook', loss_scale=512.)
+        return cfg
 
     def _init_test_data_cfg(self, dataset: DatasetEntity):
         data_cfg = ConfigDict(

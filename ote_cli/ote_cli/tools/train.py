@@ -105,6 +105,11 @@ def parse_args():
         type=float,
         help="Expected ratio of total time to run HPO to time taken for full fine-tuning.",
     )
+    parser.add_argument(
+        "--fp16",
+        action="store_true",
+        help="Execute mixed precision training.",
+    )
 
     add_hyper_parameters_sub_parser(parser, hyper_parameters)
 
@@ -169,6 +174,8 @@ def main():
             print("cannot run HPO for this task. will train a model without HPO.")
             task = task_class(task_environment=environment)
     else:
+        environment.fp16 = True if args.fp16 else False
+        print(f"FP16 is {environment.fp16}")
         task = task_class(task_environment=environment)
 
     output_model = ModelEntity(dataset, environment.get_model_configuration())
