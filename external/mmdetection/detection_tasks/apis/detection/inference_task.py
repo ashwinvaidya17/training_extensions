@@ -260,7 +260,8 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                 dataset_item.append_metadata_item(saliency_map_media, model=self._task_environment.model)
 
 
-    def infer(self, dataset: DatasetEntity, inference_parameters: Optional[InferenceParameters] = None, class_wise: Optional[bool] = False) -> DatasetEntity:
+    @check_input_parameters_type({"dataset": DatasetParamTypeCheck})
+    def infer(self, dataset: DatasetEntity, inference_parameters: Optional[InferenceParameters] = None) -> DatasetEntity:
         """ Analyzes a dataset using the latest inference model. """
 
         logger.info('Infer the model on the dataset')
