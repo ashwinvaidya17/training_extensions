@@ -63,7 +63,7 @@ repos:
             types-python-dateutil,
           ]
       - id: mypy
-        alias: mypy_ote/cli
+        alias: mypy_ote_cli
         name: "mypy (ote/cli)"
         files: '^ote/cli/.*\.py'
         additional_dependencies: [types-PyYAML]
