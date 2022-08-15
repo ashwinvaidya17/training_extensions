@@ -16,14 +16,14 @@ from copy import deepcopy
 from typing import Any, Dict, List, Sequence
 
 import numpy as np
-from ote_sdk.entities.dataset_item import DatasetItemEntity
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.label import Domain, LabelEntity
-from ote_sdk.utils.argument_checks import (
+from ote.api.entities.dataset_item import DatasetItemEntity
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.label import Domain, LabelEntity
+from ote.api.utils.argument_checks import (
     DatasetParamTypeCheck,
     check_input_parameters_type,
 )
-from ote_sdk.utils.shape_factory import ShapeFactory
+from ote.api.utils.shape_factory import ShapeFactory
 
 from mmdet.core import PolygonMasks
 from mmdet.datasets.builder import DATASETS
@@ -69,10 +69,21 @@ def get_annotation_mmdet_format(
         ]
 
         n = len(class_indices)
-        gt_bboxes.extend([[box.x1 * width, box.y1 * height, box.x2 * width, box.y2 * height] for _ in range(n)])
+        gt_bboxes.extend(
+            [
+                [box.x1 * width, box.y1 * height, box.x2 * width, box.y2 * height]
+                for _ in range(n)
+            ]
+        )
         if domain != Domain.DETECTION:
             polygon = ShapeFactory.shape_as_polygon(annotation.shape)
-            polygon = np.array([p for point in polygon.points for p in [point.x * width, point.y * height]])
+            polygon = np.array(
+                [
+                    p
+                    for point in polygon.points
+                    for p in [point.x * width, point.y * height]
+                ]
+            )
             gt_polygons.extend([[polygon] for _ in range(n)])
         gt_labels.extend(class_indices)
 
@@ -80,13 +91,16 @@ def get_annotation_mmdet_format(
         ann_info = dict(
             bboxes=np.array(gt_bboxes, dtype=np.float32).reshape(-1, 4),
             labels=np.array(gt_labels, dtype=int),
-            masks=PolygonMasks(
-                gt_polygons, height=height, width=width) if gt_polygons else [])
+            masks=PolygonMasks(gt_polygons, height=height, width=width)
+            if gt_polygons
+            else [],
+        )
     else:
         ann_info = dict(
             bboxes=np.zeros((0, 4), dtype=np.float32),
             labels=np.array([], dtype=int),
-            masks=[])
+            masks=[],
+        )
     return ann_info
 
 
@@ -111,6 +125,7 @@ class OTEDataset(CustomDataset):
         forwards data access operations to ote_dataset and converts the dataset items to the view
         convenient for mmdetection.
         """
+
         def __init__(self, ote_dataset, labels):
             self.ote_dataset = ote_dataset
             self.labels = labels
@@ -128,23 +143,31 @@ class OTEDataset(CustomDataset):
 
             dataset = self.ote_dataset
             item = dataset[index]
-            ignored_labels = np.array([self.label_idx[lbs.id] for lbs in item.ignored_labels])
+            ignored_labels = np.array(
+                [self.label_idx[lbs.id] for lbs in item.ignored_labels]
+            )
 
             height, width = item.height, item.width
 
-            data_info = dict(dataset_item=item, width=width, height=height, index=index,
-                             ann_info=dict(label_list=self.labels), ignored_labels=ignored_labels)
+            data_info = dict(
+                dataset_item=item,
+                width=width,
+                height=height,
+                index=index,
+                ann_info=dict(label_list=self.labels),
+                ignored_labels=ignored_labels,
+            )
 
             return data_info
 
     @check_input_parameters_type({"ote_dataset": DatasetParamTypeCheck})
     def __init__(
-            self,
-            ote_dataset: DatasetEntity,
-            labels: List[LabelEntity],
-            pipeline: Sequence[dict],
-            domain: Domain,
-            test_mode: bool = False,
+        self,
+        ote_dataset: DatasetEntity,
+        labels: List[LabelEntity],
+        pipeline: Sequence[dict],
+        domain: Domain,
+        test_mode: bool = False,
     ):
         self.ote_dataset = ote_dataset
         self.labels = labels
@@ -162,7 +185,9 @@ class OTEDataset(CustomDataset):
         # small image size, since otherwise reading the whole dataset during initialization will be required.
         self.data_infos = OTEDataset._DataInfoProxy(ote_dataset, labels)
 
-        self.proposals = None  # Attribute expected by mmdet but not used for OTE datasets
+        self.proposals = (
+            None  # Attribute expected by mmdet but not used for OTE datasets
+        )
 
         if not test_mode:
             self._set_group_flag()
@@ -213,10 +238,10 @@ class OTEDataset(CustomDataset):
     @staticmethod
     @check_input_parameters_type()
     def pre_pipeline(results: Dict[str, Any]):
-        """Prepare results dict for pipeline. Add expected keys to the dict. """
-        results['bbox_fields'] = []
-        results['mask_fields'] = []
-        results['seg_fields'] = []
+        """Prepare results dict for pipeline. Add expected keys to the dict."""
+        results["bbox_fields"] = []
+        results["mask_fields"] = []
+        results["seg_fields"] = []
 
     @check_input_parameters_type()
     def get_ann_info(self, idx: int):

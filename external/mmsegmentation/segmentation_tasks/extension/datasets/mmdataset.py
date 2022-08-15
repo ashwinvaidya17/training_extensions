@@ -18,17 +18,21 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import cv2
 import numpy as np
-from ote_sdk.utils.segmentation_utils import mask_from_dataset_item
-from ote_sdk.entities.annotation import Annotation, AnnotationSceneEntity, AnnotationSceneKind
-from ote_sdk.entities.dataset_item import DatasetItemEntity
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.id import ID
-from ote_sdk.entities.image import Image
-from ote_sdk.entities.label import LabelEntity, Domain
-from ote_sdk.entities.scored_label import ScoredLabel
-from ote_sdk.entities.shapes.polygon import Point, Polygon
-from ote_sdk.entities.subset import Subset
-from ote_sdk.utils.argument_checks import (
+from ote.api.utils.segmentation_utils import mask_from_dataset_item
+from ote.api.entities.annotation import (
+    Annotation,
+    AnnotationSceneEntity,
+    AnnotationSceneKind,
+)
+from ote.api.entities.dataset_item import DatasetItemEntity
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.id import ID
+from ote.api.entities.image import Image
+from ote.api.entities.label import LabelEntity, Domain
+from ote.api.entities.scored_label import ScoredLabel
+from ote.api.entities.shapes.polygon import Point, Polygon
+from ote.api.entities.subset import Subset
+from ote.api.utils.argument_checks import (
     DatasetParamTypeCheck,
     DirectoryPathCheck,
     JsonFilePathCheck,
@@ -42,7 +46,9 @@ from mmseg.datasets.pipelines import Compose
 
 
 @check_input_parameters_type()
-def get_annotation_mmseg_format(dataset_item: DatasetItemEntity, labels: List[LabelEntity]) -> dict:
+def get_annotation_mmseg_format(
+    dataset_item: DatasetItemEntity, labels: List[LabelEntity]
+) -> dict:
     """
     Function to convert a OTE annotation to mmsegmentation format. This is used both
     in the OTEDataset class defined in this file as in the custom pipeline
@@ -82,6 +88,7 @@ class OTEDataset(CustomDataset):
         forwards data access operations to ote_dataset and converts the dataset items to the view
         convenient for mmsegmentation.
         """
+
         def __init__(self, ote_dataset, labels=None):
             self.ote_dataset = ote_dataset
             self.labels = labels
@@ -98,20 +105,29 @@ class OTEDataset(CustomDataset):
             """
             dataset = self.ote_dataset
             item = dataset[index]
-            ignored_labels = np.array([self.label_idx[lbs.id] + 1 for lbs in item.ignored_labels])
+            ignored_labels = np.array(
+                [self.label_idx[lbs.id] + 1 for lbs in item.ignored_labels]
+            )
 
-            data_info = dict(dataset_item=item,
-                             width=item.width,
-                             height=item.height,
-                             index=index,
-                             ann_info=dict(labels=self.labels),
-                             ignored_labels=ignored_labels)
+            data_info = dict(
+                dataset_item=item,
+                width=item.width,
+                height=item.height,
+                index=index,
+                ann_info=dict(labels=self.labels),
+                ignored_labels=ignored_labels,
+            )
 
             return data_info
 
     @check_input_parameters_type({"ote_dataset": DatasetParamTypeCheck})
-    def __init__(self, ote_dataset: DatasetEntity, pipeline: Sequence[dict], classes: Optional[List[str]] = None,
-                 test_mode: bool = False):
+    def __init__(
+        self,
+        ote_dataset: DatasetEntity,
+        pipeline: Sequence[dict],
+        classes: Optional[List[str]] = None,
+        test_mode: bool = False,
+    ):
         self.ote_dataset = ote_dataset
         self.test_mode = test_mode
 
@@ -131,7 +147,9 @@ class OTEDataset(CustomDataset):
         # even if we need only checking aspect ratio of the image; due to it
         # this implementation of dataset does not uses such tricks as skipping images with wrong aspect ratios or
         # small image size, since otherwise reading the whole dataset during initialization will be required.
-        self.data_infos = OTEDataset._DataInfoProxy(self.ote_dataset, self.project_labels)
+        self.data_infos = OTEDataset._DataInfoProxy(
+            self.ote_dataset, self.project_labels
+        )
 
         self.pipeline = Compose(pipeline)
 
@@ -159,7 +177,7 @@ class OTEDataset(CustomDataset):
     def pre_pipeline(self, results: Dict[str, Any]):
         """Prepare results dict for pipeline."""
 
-        results['seg_fields'] = []
+        results["seg_fields"] = []
 
     @check_input_parameters_type()
     def prepare_train_img(self, idx: int) -> dict:
@@ -219,7 +237,7 @@ class OTEDataset(CustomDataset):
         gt_seg_maps = []
         for item_id in range(len(self)):
             ann_info = self.get_ann_info(item_id)
-            gt_seg_maps.append(ann_info['gt_semantic_seg'])
+            gt_seg_maps.append(ann_info["gt_semantic_seg"])
 
         return gt_seg_maps
 
@@ -228,9 +246,12 @@ class OTEDataset(CustomDataset):
 def get_classes_from_annotation(annot_path):
     with open(annot_path) as input_stream:
         content = json.load(input_stream)
-        labels_map = content['labels_map']
+        labels_map = content["labels_map"]
 
-        categories = [(v['name'], v['id']) for v in sorted(labels_map, key=lambda tup: int(tup['id']))]
+        categories = [
+            (v["name"], v["id"])
+            for v in sorted(labels_map, key=lambda tup: int(tup["id"]))
+        ]
 
     return categories
 
@@ -244,7 +265,9 @@ def abs_path_if_valid(value):
 
 
 @check_input_parameters_type()
-def create_annotation_from_hard_seg_map(hard_seg_map: np.ndarray, labels: List[LabelEntity]):
+def create_annotation_from_hard_seg_map(
+    hard_seg_map: np.ndarray, labels: List[LabelEntity]
+):
     height, width = hard_seg_map.shape[:2]
     unique_labels = np.unique(hard_seg_map)
 
@@ -258,7 +281,7 @@ def create_annotation_from_hard_seg_map(hard_seg_map: np.ndarray, labels: List[L
         assert len(matches) == 1
         label = matches[0]
 
-        label_mask = (hard_seg_map == label_id)
+        label_mask = hard_seg_map == label_id
         label_index_map = label_mask.astype(np.uint8)
 
         contours, hierarchies = cv2.findContours(
@@ -281,11 +304,13 @@ def create_annotation_from_hard_seg_map(hard_seg_map: np.ndarray, labels: List[L
                 for point in contour
             ]
 
-            annotations.append(Annotation(
+            annotations.append(
+                Annotation(
                     Polygon(points=points),
                     labels=[ScoredLabel(label)],
                     id=ID(f"{label_id:08}"),
-            ))
+                )
+            )
 
     return annotations
 
@@ -295,7 +320,7 @@ def load_labels_from_annotation(ann_dir):
     if ann_dir is None:
         return []
 
-    labels_map_path = os.path.join(ann_dir, 'meta.json')
+    labels_map_path = os.path.join(ann_dir, "meta.json")
     labels = get_classes_from_annotation(labels_map_path)
 
     return labels
@@ -309,9 +334,9 @@ def add_labels(cur_labels: List[LabelEntity], new_labels: List[tuple]):
             raise ValueError("Found multiple matching labels")
         elif len(matching_labels) == 0:
             label_id = label_id if label_id is not None else len(cur_labels)
-            label = LabelEntity(name=label_name,
-                                domain=Domain.SEGMENTATION,
-                                id=ID(f"{label_id:08}"))
+            label = LabelEntity(
+                name=label_name, domain=Domain.SEGMENTATION, id=ID(f"{label_id:08}")
+            )
             cur_labels.append(label)
 
 
@@ -326,15 +351,19 @@ def check_labels(cur_labels: List[LabelEntity], new_labels: List[tuple]):
 @check_input_parameters_type()
 def get_extended_label_names(labels: List[LabelEntity]):
     target_labels = [v.name for v in sorted(labels, key=lambda x: x.id)]
-    all_labels = ['background'] + target_labels
+    all_labels = ["background"] + target_labels
     return all_labels
 
 
-@check_input_parameters_type({"ann_file_path": DirectoryPathCheck, "data_root_dir": DirectoryPathCheck})
-def load_dataset_items(ann_file_path: str,
-                       data_root_dir: str,
-                       subset: Subset = Subset.NONE,
-                       labels_list: Optional[List[LabelEntity]] = None):
+@check_input_parameters_type(
+    {"ann_file_path": DirectoryPathCheck, "data_root_dir": DirectoryPathCheck}
+)
+def load_dataset_items(
+    ann_file_path: str,
+    data_root_dir: str,
+    subset: Subset = Subset.NONE,
+    labels_list: Optional[List[LabelEntity]] = None,
+):
     ann_dir = abs_path_if_valid(ann_file_path)
     img_dir = abs_path_if_valid(data_root_dir)
 
@@ -348,24 +377,30 @@ def load_dataset_items(ann_file_path: str,
         check_labels(labels_list, annot_labels)
 
     test_mode = subset in {Subset.VALIDATION, Subset.TESTING}
-    pipeline = [dict(type='LoadAnnotations')]
-    dataset = CustomDataset(img_dir=img_dir,
-                            ann_dir=ann_dir,
-                            pipeline=pipeline,
-                            classes=get_extended_label_names(labels_list),
-                            test_mode=test_mode)
+    pipeline = [dict(type="LoadAnnotations")]
+    dataset = CustomDataset(
+        img_dir=img_dir,
+        ann_dir=ann_dir,
+        pipeline=pipeline,
+        classes=get_extended_label_names(labels_list),
+        test_mode=test_mode,
+    )
     dataset.test_mode = False
 
     dataset_items = []
     for item in dataset:
-        annotations = create_annotation_from_hard_seg_map(hard_seg_map=item['gt_semantic_seg'],
-                                                          labels=labels_list)
-        filename = os.path.join(item['img_prefix'], item['img_info']['filename'])
+        annotations = create_annotation_from_hard_seg_map(
+            hard_seg_map=item["gt_semantic_seg"], labels=labels_list
+        )
+        filename = os.path.join(item["img_prefix"], item["img_info"]["filename"])
         image = Image(file_path=filename)
-        annotation_scene = AnnotationSceneEntity(kind=AnnotationSceneKind.ANNOTATION,
-                                                 annotations=annotations)
-        dataset_items.append(DatasetItemEntity(media=image,
-                                               annotation_scene=annotation_scene,
-                                               subset=subset))
+        annotation_scene = AnnotationSceneEntity(
+            kind=AnnotationSceneKind.ANNOTATION, annotations=annotations
+        )
+        dataset_items.append(
+            DatasetItemEntity(
+                media=image, annotation_scene=annotation_scene, subset=subset
+            )
+        )
 
     return dataset_items

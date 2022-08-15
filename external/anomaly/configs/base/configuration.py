@@ -20,8 +20,8 @@ from sys import maxsize
 
 from attr import attrs
 from configs.base.configuration_enums import ModelBackbone, POTQuantizationPreset
-from ote_sdk.configuration import ConfigurableParameters
-from ote_sdk.configuration.elements import (
+from ote.api.configuration import ConfigurableParameters
+from ote.api.configuration.elements import (
     ParameterGroup,
     add_parameter_group,
     boolean_attribute,
@@ -30,7 +30,7 @@ from ote_sdk.configuration.elements import (
     selectable,
     string_attribute,
 )
-from ote_sdk.configuration.model_lifecycle import ModelLifecycle
+from ote.api.configuration.model_lifecycle import ModelLifecycle
 
 
 @attrs

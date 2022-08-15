@@ -1,15 +1,15 @@
 import pytest
-from ote_sdk.configuration.configurable_parameters import ConfigurableParameters
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.inference_parameters import InferenceParameters
-from ote_sdk.entities.label_schema import LabelSchemaEntity
-from ote_sdk.entities.model import ModelConfiguration, ModelEntity
-from ote_sdk.entities.resultset import ResultSetEntity
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_unit
-from ote_sdk.tests.parameters_validation.validation_helper import (
+from ote.api.configuration.configurable_parameters import ConfigurableParameters
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.inference_parameters import InferenceParameters
+from ote.api.entities.label_schema import LabelSchemaEntity
+from ote.api.entities.model import ModelConfiguration, ModelEntity
+from ote.api.entities.resultset import ResultSetEntity
+from ote.api.test_suite.e2e_test_system import e2e_pytest_unit
+from ote.api.tests.parameters_validation.validation_helper import (
     check_value_error_exception_raised,
 )
-from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType
+from ote.api.usecases.tasks.interfaces.export_interface import ExportType
 
 from torchreid_tasks.inference_task import OTEClassificationInferenceTask
 

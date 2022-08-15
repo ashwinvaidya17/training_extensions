@@ -28,32 +28,45 @@ import torch
 from mmcv.parallel import MMDataParallel
 from mmcv.runner import load_checkpoint, load_state_dict
 from mmcv.utils import Config
-from ote_sdk.entities.annotation import Annotation
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.id import ID
-from ote_sdk.entities.inference_parameters import InferenceParameters, default_progress_callback
-from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision, OptimizationMethod
-from ote_sdk.entities.model_template import TaskType, task_type_to_label_domain
-from ote_sdk.entities.resultset import ResultSetEntity
-from ote_sdk.entities.result_media import ResultMediaEntity
-from ote_sdk.entities.scored_label import ScoredLabel
-from ote_sdk.entities.shapes.polygon import Point, Polygon
-from ote_sdk.entities.shapes.rectangle import Rectangle
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.entities.tensor import TensorEntity
-from ote_sdk.usecases.evaluation.metrics_helper import MetricsHelper
-from ote_sdk.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
-from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType, IExportTask
-from ote_sdk.usecases.tasks.interfaces.inference_interface import IInferenceTask
-from ote_sdk.usecases.tasks.interfaces.unload_interface import IUnload
-from ote_sdk.serialization.label_mapper import label_schema_to_bytes
-from ote_sdk.utils.argument_checks import (
+from ote.api.entities.annotation import Annotation
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.id import ID
+from ote.api.entities.inference_parameters import (
+    InferenceParameters,
+    default_progress_callback,
+)
+from ote.api.entities.model import (
+    ModelEntity,
+    ModelFormat,
+    ModelOptimizationType,
+    ModelPrecision,
+    OptimizationMethod,
+)
+from ote.api.entities.model_template import TaskType, task_type_to_label_domain
+from ote.api.entities.resultset import ResultSetEntity
+from ote.api.entities.result_media import ResultMediaEntity
+from ote.api.entities.scored_label import ScoredLabel
+from ote.api.entities.shapes.polygon import Point, Polygon
+from ote.api.entities.shapes.rectangle import Rectangle
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.entities.tensor import TensorEntity
+from ote.api.usecases.evaluation.metrics_helper import MetricsHelper
+from ote.api.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
+from ote.api.usecases.tasks.interfaces.export_interface import ExportType, IExportTask
+from ote.api.usecases.tasks.interfaces.inference_interface import IInferenceTask
+from ote.api.usecases.tasks.interfaces.unload_interface import IUnload
+from ote.api.serialization.label_mapper import label_schema_to_bytes
+from ote.api.utils.argument_checks import (
     DatasetParamTypeCheck,
     check_input_parameters_type,
 )
 
 from mmdet.apis import export_model
-from detection_tasks.apis.detection.config_utils import patch_config, prepare_for_testing, set_hyperparams
+from detection_tasks.apis.detection.config_utils import (
+    patch_config,
+    prepare_for_testing,
+    set_hyperparams,
+)
 from detection_tasks.apis.detection.configuration import OTEDetectionConfig
 from detection_tasks.apis.detection.ote_utils import InferenceProgressCallback
 from mmdet.datasets import build_dataloader, build_dataset
@@ -72,21 +85,21 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
 
     @check_input_parameters_type()
     def __init__(self, task_environment: TaskEnvironment):
-        """"
+        """ "
         Task for inference object detection models using OTEDetection.
         """
-        logger.info('Loading OTEDetectionTask')
+        logger.info("Loading OTEDetectionTask")
 
-        print('ENVIRONMENT:')
+        print("ENVIRONMENT:")
         for name, val in collect_env().items():
-            print(f'{name}: {val}')
-        print('pip list:')
-        run('pip list', shell=True, check=True)
+            print(f"{name}: {val}")
+        print("pip list:")
+        run("pip list", shell=True, check=True)
 
         self._task_environment = task_environment
         self._task_type = task_environment.model_template.task_type
         self._scratch_space = tempfile.mkdtemp(prefix="ote-det-scratch-")
-        logger.info(f'Scratch space created at {self._scratch_space}')
+        logger.info(f"Scratch space created at {self._scratch_space}")
 
         self._model_name = task_environment.model_template.name
         self._labels = task_environment.get_labels(False)
@@ -97,9 +110,17 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
         self._base_dir = os.path.abspath(os.path.dirname(template_file_path))
         config_file_path = os.path.join(self._base_dir, "model.py")
         self._config = Config.fromfile(config_file_path)
-        patch_config(self._config, self._scratch_space, self._labels, task_type_to_label_domain(self._task_type), random_seed=42)
+        patch_config(
+            self._config,
+            self._scratch_space,
+            self._labels,
+            task_type_to_label_domain(self._task_type),
+            random_seed=42,
+        )
         set_hyperparams(self._config, self._hyperparams)
-        self.confidence_threshold: float = self._hyperparams.postprocessing.confidence_threshold
+        self.confidence_threshold: float = (
+            self._hyperparams.postprocessing.confidence_threshold
+        )
 
         # Set default model attributes.
         self._optimization_methods = []
@@ -107,18 +128,22 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
         self._optimization_type = ModelOptimizationType.MO
 
         # Create and initialize PyTorch model.
-        logger.info('Loading the model')
+        logger.info("Loading the model")
         self._model = self._load_model(task_environment.model)
 
         # Extra control variables.
         self._training_work_dir = None
         self._is_training = False
         self._should_stop = False
-        logger.info('Task initialization completed')
+        logger.info("Task initialization completed")
 
     @property
     def _precision_from_config(self):
-        return [ModelPrecision.FP16] if self._config.get('fp16', None) else [ModelPrecision.FP32]
+        return (
+            [ModelPrecision.FP16]
+            if self._config.get("fp16", None)
+            else [ModelPrecision.FP32]
+        )
 
     @property
     def _hyperparams(self):
@@ -128,18 +153,22 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
         if model is not None:
             # If a model has been trained and saved for the task already, create empty model and load weights here
             buffer = io.BytesIO(model.get_data("weights.pth"))
-            model_data = torch.load(buffer, map_location=torch.device('cpu'))
+            model_data = torch.load(buffer, map_location=torch.device("cpu"))
 
-            self.confidence_threshold = model_data.get('confidence_threshold', self.confidence_threshold)
-            if model_data.get('anchors'):
-                anchors = model_data['anchors']
-                self._config.model.bbox_head.anchor_generator.heights = anchors['heights']
-                self._config.model.bbox_head.anchor_generator.widths = anchors['widths']
+            self.confidence_threshold = model_data.get(
+                "confidence_threshold", self.confidence_threshold
+            )
+            if model_data.get("anchors"):
+                anchors = model_data["anchors"]
+                self._config.model.bbox_head.anchor_generator.heights = anchors[
+                    "heights"
+                ]
+                self._config.model.bbox_head.anchor_generator.widths = anchors["widths"]
 
             model = self._create_model(self._config, from_scratch=True)
 
             try:
-                load_state_dict(model, model_data['model'])
+                load_state_dict(model, model_data["model"])
 
                 # It prevent model from being overwritten
                 if "load_from" in self._config:
@@ -148,22 +177,26 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                 logger.info(f"Loaded model weights from Task Environment")
                 logger.info(f"Model architecture: {self._model_name}")
                 for name, weights in model.named_parameters():
-                    if(not torch.isfinite(weights).all()):
-                        logger.info(f"Invalid weights in: {name}. Recreate model from pre-trained weights")
+                    if not torch.isfinite(weights).all():
+                        logger.info(
+                            f"Invalid weights in: {name}. Recreate model from pre-trained weights"
+                        )
                         model = self._create_model(self._config, from_scratch=False)
                         return model
 
             except BaseException as ex:
-                raise ValueError("Could not load the saved model. The model file structure is invalid.") \
-                    from ex
+                raise ValueError(
+                    "Could not load the saved model. The model file structure is invalid."
+                ) from ex
         else:
             # If there is no trained model yet, create model with pretrained weights as defined in the model config
             # file.
             model = self._create_model(self._config, from_scratch=False)
-            logger.info(f"No trained model in project yet. Created new model with '{self._model_name}' "
-                        f"architecture and general-purpose pretrained weights.")
+            logger.info(
+                f"No trained model in project yet. Created new model with '{self._model_name}' "
+                f"architecture and general-purpose pretrained weights."
+            )
         return model
-
 
     @staticmethod
     def _create_model(config: Config, from_scratch: bool = False):
@@ -177,25 +210,28 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
         """
         model_cfg = copy.deepcopy(config.model)
 
-        init_from = None if from_scratch else config.get('load_from', None)
+        init_from = None if from_scratch else config.get("load_from", None)
         logger.warning(init_from)
         if init_from is not None:
             # No need to initialize backbone separately, if all weights are provided.
             model_cfg.pretrained = None
-            logger.warning('build detector')
+            logger.warning("build detector")
             model = build_detector(model_cfg)
             # Load all weights.
-            logger.warning('load checkpoint')
-            load_checkpoint(model, init_from, map_location='cpu')
+            logger.warning("load checkpoint")
+            load_checkpoint(model, init_from, map_location="cpu")
         else:
-            logger.warning('build detector')
+            logger.warning("build detector")
             model = build_detector(model_cfg)
         return model
 
-
-    def _add_predictions_to_dataset(self, prediction_results, dataset, confidence_threshold=0.0):
-        """ Loop over dataset again to assign predictions. Convert from MMDetection format to OTE format. """
-        for dataset_item, (all_results, feature_vector, saliency_map) in zip(dataset, prediction_results):
+    def _add_predictions_to_dataset(
+        self, prediction_results, dataset, confidence_threshold=0.0
+    ):
+        """Loop over dataset again to assign predictions. Convert from MMDetection format to OTE format."""
+        for dataset_item, (all_results, feature_vector, saliency_map) in zip(
+            dataset, prediction_results
+        ):
             width = dataset_item.width
             height = dataset_item.height
 
@@ -211,68 +247,124 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                         if probability < confidence_threshold:
                             continue
 
-                        assigned_label = [ScoredLabel(self._labels[label_idx],
-                                                      probability=probability)]
+                        assigned_label = [
+                            ScoredLabel(
+                                self._labels[label_idx], probability=probability
+                            )
+                        ]
                         if coords[3] - coords[1] <= 0 or coords[2] - coords[0] <= 0:
                             continue
 
-                        shapes.append(Annotation(
-                            Rectangle(x1=coords[0], y1=coords[1], x2=coords[2], y2=coords[3]),
-                            labels=assigned_label))
-            elif self._task_type in {TaskType.INSTANCE_SEGMENTATION, TaskType.ROTATED_DETECTION}:
+                        shapes.append(
+                            Annotation(
+                                Rectangle(
+                                    x1=coords[0],
+                                    y1=coords[1],
+                                    x2=coords[2],
+                                    y2=coords[3],
+                                ),
+                                labels=assigned_label,
+                            )
+                        )
+            elif self._task_type in {
+                TaskType.INSTANCE_SEGMENTATION,
+                TaskType.ROTATED_DETECTION,
+            }:
                 for label_idx, (boxes, masks) in enumerate(zip(*all_results)):
                     for mask, probability in zip(masks, boxes[:, 4]):
                         mask = mask.astype(np.uint8)
                         probability = float(probability)
-                        if math.isnan(probability) or probability < confidence_threshold:
+                        if (
+                            math.isnan(probability)
+                            or probability < confidence_threshold
+                        ):
                             continue
-                        contours, hierarchies = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+                        contours, hierarchies = cv2.findContours(
+                            mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
+                        )
                         if hierarchies is None:
                             continue
                         for contour, hierarchy in zip(contours, hierarchies[0]):
                             if hierarchy[3] != -1 or len(contour) <= 2:
                                 continue
                             if self._task_type == TaskType.INSTANCE_SEGMENTATION:
-                                points = [Point(x=point[0][0] / width, y=point[0][1] / height) for point in contour]
+                                points = [
+                                    Point(x=point[0][0] / width, y=point[0][1] / height)
+                                    for point in contour
+                                ]
                             else:
                                 box_points = cv2.boxPoints(cv2.minAreaRect(contour))
-                                points = [Point(x=point[0] / width, y=point[1] / height) for point in box_points]
-                            labels = [ScoredLabel(self._labels[label_idx], probability=probability)]
+                                points = [
+                                    Point(x=point[0] / width, y=point[1] / height)
+                                    for point in box_points
+                                ]
+                            labels = [
+                                ScoredLabel(
+                                    self._labels[label_idx], probability=probability
+                                )
+                            ]
                             polygon = Polygon(points=points)
-                            if cv2.contourArea(contour) > 0 and polygon.get_area() > 1e-12:
-                                shapes.append(Annotation(polygon, labels=labels, id=ID(f"{label_idx:08}")))
+                            if (
+                                cv2.contourArea(contour) > 0
+                                and polygon.get_area() > 1e-12
+                            ):
+                                shapes.append(
+                                    Annotation(
+                                        polygon, labels=labels, id=ID(f"{label_idx:08}")
+                                    )
+                                )
             else:
                 raise RuntimeError(
-                    f"Detection results assignment not implemented for task: {self._task_type}")
+                    f"Detection results assignment not implemented for task: {self._task_type}"
+                )
 
             dataset_item.append_annotations(shapes)
 
             if feature_vector is not None:
-                active_score = TensorEntity(name="representation_vector", numpy=feature_vector)
-                dataset_item.append_metadata_item(active_score, model=self._task_environment.model)
-            
+                active_score = TensorEntity(
+                    name="representation_vector", numpy=feature_vector
+                )
+                dataset_item.append_metadata_item(
+                    active_score, model=self._task_environment.model
+                )
+
             if saliency_map is not None:
                 width, height = dataset_item.width, dataset_item.height
-                saliency_map = cv2.resize(saliency_map, (width, height), interpolation=cv2.INTER_NEAREST)
-                saliency_map_media = ResultMediaEntity(name="saliency_map", type="Saliency map",
-                                                annotation_scene=dataset_item.annotation_scene, 
-                                                numpy=saliency_map, roi=dataset_item.roi)
-                dataset_item.append_metadata_item(saliency_map_media, model=self._task_environment.model)
-
+                saliency_map = cv2.resize(
+                    saliency_map, (width, height), interpolation=cv2.INTER_NEAREST
+                )
+                saliency_map_media = ResultMediaEntity(
+                    name="saliency_map",
+                    type="Saliency map",
+                    annotation_scene=dataset_item.annotation_scene,
+                    numpy=saliency_map,
+                    roi=dataset_item.roi,
+                )
+                dataset_item.append_metadata_item(
+                    saliency_map_media, model=self._task_environment.model
+                )
 
     @check_input_parameters_type({"dataset": DatasetParamTypeCheck})
-    def infer(self, dataset: DatasetEntity, inference_parameters: Optional[InferenceParameters] = None) -> DatasetEntity:
-        """ Analyzes a dataset using the latest inference model. """
+    def infer(
+        self,
+        dataset: DatasetEntity,
+        inference_parameters: Optional[InferenceParameters] = None,
+    ) -> DatasetEntity:
+        """Analyzes a dataset using the latest inference model."""
 
-        logger.info('Infer the model on the dataset')
+        logger.info("Infer the model on the dataset")
         set_hyperparams(self._config, self._hyperparams)
         # There is no need to have many workers for a couple of images.
-        self._config.data.workers_per_gpu = max(min(self._config.data.workers_per_gpu, len(dataset) - 1), 0)
+        self._config.data.workers_per_gpu = max(
+            min(self._config.data.workers_per_gpu, len(dataset) - 1), 0
+        )
 
         # If confidence threshold is adaptive then up-to-date value should be stored in the model
         # and should not be changed during inference. Otherwise user-specified value should be taken.
         if not self._hyperparams.postprocessing.result_based_confidence_threshold:
-            self.confidence_threshold = self._hyperparams.postprocessing.confidence_threshold
+            self.confidence_threshold = (
+                self._hyperparams.postprocessing.confidence_threshold
+            )
 
         update_progress_callback = default_progress_callback
         dump_saliency_map = True
@@ -288,34 +380,52 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
         def hook(module, input, output):
             time_monitor.on_test_batch_end(None, None)
 
-        logger.info(f'Confidence threshold {self.confidence_threshold}')
+        logger.info(f"Confidence threshold {self.confidence_threshold}")
         model = self._model
-        with model.register_forward_pre_hook(pre_hook), model.register_forward_hook(hook):
-            prediction_results, _ = self._infer_detector(model, self._config, dataset, dump_features=True, eval=False, 
-                                                        dump_saliency_map=dump_saliency_map)
-        self._add_predictions_to_dataset(prediction_results, dataset, self.confidence_threshold)
+        with model.register_forward_pre_hook(pre_hook), model.register_forward_hook(
+            hook
+        ):
+            prediction_results, _ = self._infer_detector(
+                model,
+                self._config,
+                dataset,
+                dump_features=True,
+                eval=False,
+                dump_saliency_map=dump_saliency_map,
+            )
+        self._add_predictions_to_dataset(
+            prediction_results, dataset, self.confidence_threshold
+        )
 
-        logger.info('Inference completed')
+        logger.info("Inference completed")
         return dataset
 
-
     @staticmethod
-    def _infer_detector(model: torch.nn.Module, config: Config, dataset: DatasetEntity, dump_features: bool = False,
-                        eval: Optional[bool] = False, metric_name: Optional[str] = 'mAP', 
-                        dump_saliency_map: bool = False) -> Tuple[List, float]:
+    def _infer_detector(
+        model: torch.nn.Module,
+        config: Config,
+        dataset: DatasetEntity,
+        dump_features: bool = False,
+        eval: Optional[bool] = False,
+        metric_name: Optional[str] = "mAP",
+        dump_saliency_map: bool = False,
+    ) -> Tuple[List, float]:
         model.eval()
         test_config = prepare_for_testing(config, dataset)
         mm_val_dataset = build_dataset(test_config.data.test)
         batch_size = 1
-        mm_val_dataloader = build_dataloader(mm_val_dataset,
-                                             samples_per_gpu=batch_size,
-                                             workers_per_gpu=test_config.data.workers_per_gpu,
-                                             num_gpus=1,
-                                             dist=False,
-                                             shuffle=False)
+        mm_val_dataloader = build_dataloader(
+            mm_val_dataset,
+            samples_per_gpu=batch_size,
+            workers_per_gpu=test_config.data.workers_per_gpu,
+            num_gpus=1,
+            dist=False,
+            shuffle=False,
+        )
         if torch.cuda.is_available():
-            eval_model = MMDataParallel(model.cuda(test_config.gpu_ids[0]),
-                                        device_ids=test_config.gpu_ids)
+            eval_model = MMDataParallel(
+                model.cuda(test_config.gpu_ids[0]), device_ids=test_config.gpu_ids
+            )
         else:
             eval_model = MMDataCPU(model)
 
@@ -332,23 +442,29 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
         def dummy_dump_features_hook(mod, inp, out):
             feature_vectors.append(None)
 
-        def dump_saliency_hook(model: torch.nn.Module, input: Tuple, out: List[torch.Tensor]):
-            """ Dump the last feature map to `saliency_maps` cache 
+        def dump_saliency_hook(
+            model: torch.nn.Module, input: Tuple, out: List[torch.Tensor]
+        ):
+            """Dump the last feature map to `saliency_maps` cache
 
             Args:
                 model (torch.nn.Module): PyTorch model
-                input (Tuple): input 
-                out (List[torch.Tensor]): a list of feature maps 
+                input (Tuple): input
+                out (List[torch.Tensor]): a list of feature maps
             """
             with torch.no_grad():
                 saliency_map = get_saliency_map(out[-1])
             saliency_maps.append(saliency_map.squeeze(0).detach().cpu().numpy())
-        
+
         def dummy_dump_saliency_hook(model, input, out):
             saliency_maps.append(None)
 
-        feature_vector_hook = dump_features_hook if dump_features else dummy_dump_features_hook
-        saliency_map_hook = dump_saliency_hook if dump_saliency_map else dummy_dump_saliency_hook
+        feature_vector_hook = (
+            dump_features_hook if dump_features else dummy_dump_features_hook
+        )
+        saliency_map_hook = (
+            dump_saliency_hook if dump_saliency_map else dummy_dump_saliency_hook
+        )
 
         # Use a single gpu for testing. Set in both mm_val_dataloader and eval_model
         with eval_model.module.backbone.register_forward_hook(feature_vector_hook):
@@ -360,33 +476,47 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
 
         # hard-code way to remove EvalHook args
         for key in [
-                'interval', 'tmpdir', 'start', 'gpu_collect', 'save_best',
-                'rule', 'dynamic_intervals'
+            "interval",
+            "tmpdir",
+            "start",
+            "gpu_collect",
+            "save_best",
+            "rule",
+            "dynamic_intervals",
         ]:
             config.evaluation.pop(key, None)
 
         metric = None
         if eval:
-            metric = mm_val_dataset.evaluate(eval_predictions, **config.evaluation)[metric_name]
+            metric = mm_val_dataset.evaluate(eval_predictions, **config.evaluation)[
+                metric_name
+            ]
 
-        assert len(eval_predictions) == len(feature_vectors), f'{len(eval_predictions)} != {len(feature_vectors)}'
-        assert len(eval_predictions) == len(saliency_maps), f'{len(eval_predictions)} != {len(saliency_maps)}'
+        assert len(eval_predictions) == len(
+            feature_vectors
+        ), f"{len(eval_predictions)} != {len(feature_vectors)}"
+        assert len(eval_predictions) == len(
+            saliency_maps
+        ), f"{len(eval_predictions)} != {len(saliency_maps)}"
         eval_predictions = zip(eval_predictions, feature_vectors, saliency_maps)
         return eval_predictions, metric
 
     @check_input_parameters_type()
-    def evaluate(self,
-                 output_result_set: ResultSetEntity,
-                 evaluation_metric: Optional[str] = None):
-        """ Computes performance on a resultset """
-        logger.info('Evaluating the metric')
+    def evaluate(
+        self,
+        output_result_set: ResultSetEntity,
+        evaluation_metric: Optional[str] = None,
+    ):
+        """Computes performance on a resultset"""
+        logger.info("Evaluating the metric")
         if evaluation_metric is not None:
-            logger.warning(f'Requested to use {evaluation_metric} metric, but parameter is ignored. Use F-measure instead.')
+            logger.warning(
+                f"Requested to use {evaluation_metric} metric, but parameter is ignored. Use F-measure instead."
+            )
         metric = MetricsHelper.compute_f_measure(output_result_set)
         logger.info(f"F-measure after evaluation: {metric.f_measure.value}")
         output_result_set.performance = metric.get_performance()
-        logger.info('Evaluation completed')
-
+        logger.info("Evaluation completed")
 
     @staticmethod
     def _is_docker():
@@ -395,12 +525,12 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
 
         :return bool: True if task runs in docker
         """
-        path = '/proc/self/cgroup'
+        path = "/proc/self/cgroup"
         is_in_docker = False
         if os.path.isfile(path):
             with open(path) as f:
-                is_in_docker = is_in_docker or any('docker' in line for line in f)
-        is_in_docker = is_in_docker or os.path.exists('/.dockerenv')
+                is_in_docker = is_in_docker or any("docker" in line for line in f)
+        is_in_docker = is_in_docker or os.path.exists("/.dockerenv")
         return is_in_docker
 
     def unload(self):
@@ -410,51 +540,71 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
         self._delete_scratch_space()
         if self._is_docker():
             logger.warning(
-                "Got unload request. Unloading models. Throwing Segmentation Fault on purpose")
+                "Got unload request. Unloading models. Throwing Segmentation Fault on purpose"
+            )
             import ctypes
+
             ctypes.string_at(0)
         else:
-            logger.warning("Got unload request, but not on Docker. Only clearing CUDA cache")
+            logger.warning(
+                "Got unload request, but not on Docker. Only clearing CUDA cache"
+            )
             torch.cuda.empty_cache()
-            logger.warning(f"Done unloading. "
-                           f"Torch is still occupying {torch.cuda.memory_allocated()} bytes of GPU memory")
+            logger.warning(
+                f"Done unloading. "
+                f"Torch is still occupying {torch.cuda.memory_allocated()} bytes of GPU memory"
+            )
 
     @check_input_parameters_type()
-    def export(self,
-               export_type: ExportType,
-               output_model: ModelEntity):
-        logger.info('Exporting the model')
+    def export(self, export_type: ExportType, output_model: ModelEntity):
+        logger.info("Exporting the model")
         assert export_type == ExportType.OPENVINO
         output_model.model_format = ModelFormat.OPENVINO
         output_model.optimization_type = self._optimization_type
         with tempfile.TemporaryDirectory() as tempdir:
-            optimized_model_dir = os.path.join(tempdir, 'export')
-            logger.info(f'Optimized model will be temporarily saved to "{optimized_model_dir}"')
+            optimized_model_dir = os.path.join(tempdir, "export")
+            logger.info(
+                f'Optimized model will be temporarily saved to "{optimized_model_dir}"'
+            )
             os.makedirs(optimized_model_dir, exist_ok=True)
             try:
                 from torch.jit._trace import TracerWarning
-                warnings.filterwarnings('ignore', category=TracerWarning)
+
+                warnings.filterwarnings("ignore", category=TracerWarning)
                 if torch.cuda.is_available():
                     model = self._model.cuda(self._config.gpu_ids[0])
                 else:
                     model = self._model.cpu()
-                pruning_transformation = OptimizationMethod.FILTER_PRUNING in self._optimization_methods
-                export_model(model, self._config, tempdir, target='openvino',
-                             pruning_transformation=pruning_transformation,
-                             precision=self._precision_from_config[0].name)
-                bin_file = [f for f in os.listdir(tempdir) if f.endswith('.bin')][0]
-                xml_file = [f for f in os.listdir(tempdir) if f.endswith('.xml')][0]
+                pruning_transformation = (
+                    OptimizationMethod.FILTER_PRUNING in self._optimization_methods
+                )
+                export_model(
+                    model,
+                    self._config,
+                    tempdir,
+                    target="openvino",
+                    pruning_transformation=pruning_transformation,
+                    precision=self._precision_from_config[0].name,
+                )
+                bin_file = [f for f in os.listdir(tempdir) if f.endswith(".bin")][0]
+                xml_file = [f for f in os.listdir(tempdir) if f.endswith(".xml")][0]
                 with open(os.path.join(tempdir, bin_file), "rb") as f:
-                    output_model.set_data('openvino.bin', f.read())
+                    output_model.set_data("openvino.bin", f.read())
                 with open(os.path.join(tempdir, xml_file), "rb") as f:
-                    output_model.set_data('openvino.xml', f.read())
-                output_model.set_data('confidence_threshold', np.array([self.confidence_threshold], dtype=np.float32).tobytes())
+                    output_model.set_data("openvino.xml", f.read())
+                output_model.set_data(
+                    "confidence_threshold",
+                    np.array([self.confidence_threshold], dtype=np.float32).tobytes(),
+                )
                 output_model.precision = self._precision
                 output_model.optimization_methods = self._optimization_methods
             except Exception as ex:
-                raise RuntimeError('Optimization was unsuccessful.') from ex
-        output_model.set_data("label_schema.json", label_schema_to_bytes(self._task_environment.label_schema))
-        logger.info('Exporting completed')
+                raise RuntimeError("Optimization was unsuccessful.") from ex
+        output_model.set_data(
+            "label_schema.json",
+            label_schema_to_bytes(self._task_environment.label_schema),
+        )
+        logger.info("Exporting completed")
 
     def _delete_scratch_space(self):
         """

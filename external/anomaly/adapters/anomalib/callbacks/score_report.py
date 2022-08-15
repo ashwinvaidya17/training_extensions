@@ -16,7 +16,7 @@
 
 from typing import Optional
 
-from ote_sdk.entities.train_parameters import TrainParameters
+from ote.api.entities.train_parameters import TrainParameters
 from pytorch_lightning import Callback
 
 

@@ -30,21 +30,21 @@ from adapters.anomalib.data.dataset import (
     AnomalySegmentationDataset,
 )
 from adapters.anomalib.logger import get_logger
-from ote_sdk.configuration.helper import create as create_hyper_parameters
-from ote_sdk.entities.inference_parameters import InferenceParameters
-from ote_sdk.entities.label_schema import LabelSchemaEntity
-from ote_sdk.entities.model import ModelEntity
-from ote_sdk.entities.model_template import TaskType, parse_model_template
-from ote_sdk.entities.optimization_parameters import OptimizationParameters
-from ote_sdk.entities.resultset import ResultSetEntity
-from ote_sdk.entities.subset import Subset
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.entities.train_parameters import TrainParameters
-from ote_sdk.usecases.adapters.model_adapter import ModelAdapter
-from ote_sdk.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
-from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType
-from ote_sdk.usecases.tasks.interfaces.inference_interface import IInferenceTask
-from ote_sdk.usecases.tasks.interfaces.optimization_interface import OptimizationType
+from ote.api.configuration.helper import create as create_hyper_parameters
+from ote.api.entities.inference_parameters import InferenceParameters
+from ote.api.entities.label_schema import LabelSchemaEntity
+from ote.api.entities.model import ModelEntity
+from ote.api.entities.model_template import TaskType, parse_model_template
+from ote.api.entities.optimization_parameters import OptimizationParameters
+from ote.api.entities.resultset import ResultSetEntity
+from ote.api.entities.subset import Subset
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.entities.train_parameters import TrainParameters
+from ote.api.usecases.adapters.model_adapter import ModelAdapter
+from ote.api.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
+from ote.api.usecases.tasks.interfaces.export_interface import ExportType
+from ote.api.usecases.tasks.interfaces.inference_interface import IInferenceTask
+from ote.api.usecases.tasks.interfaces.optimization_interface import OptimizationType
 from tasks import NNCFTask, OpenVINOTask
 
 logger = get_logger(__name__)
@@ -122,7 +122,7 @@ class OteAnomalyTask:
 
     def get_dataclass(
         self,
-    ) -> Union[Type[AnomalyDetectionDataset], Type[AnomalySegmentationDataset], Type[AnomalyClassificationDataset]]:
+    ) -> Union[Type[AnomalyDetectionDataset], Type[AnomalySegmentationDataset], Type[AnomalyClassificationDataset],]:
         """Gets the dataloader based on the task type.
 
         Raises:
@@ -185,7 +185,10 @@ class OteAnomalyTask:
             configuration=self.task_environment.get_model_configuration(),
         )
         self.torch_task.train(
-            dataset=self.dataset, output_model=output_model, train_parameters=TrainParameters(), seed=self.seed
+            dataset=self.dataset,
+            output_model=output_model,
+            train_parameters=TrainParameters(),
+            seed=self.seed,
         )
 
         logger.info("Inferring the base torch model on the validation set.")

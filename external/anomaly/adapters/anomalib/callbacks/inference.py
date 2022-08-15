@@ -23,13 +23,13 @@ import pytorch_lightning as pl
 from adapters.anomalib.logger import get_logger
 from anomalib.models import AnomalyModule
 from anomalib.post_processing import anomaly_map_to_color_map
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.label import LabelEntity
-from ote_sdk.entities.model_template import TaskType
-from ote_sdk.entities.result_media import ResultMediaEntity
-from ote_sdk.entities.scored_label import ScoredLabel
-from ote_sdk.utils.anomaly_utils import create_detection_annotation_from_anomaly_heatmap
-from ote_sdk.utils.segmentation_utils import create_annotation_from_segmentation_map
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.label import LabelEntity
+from ote.api.entities.model_template import TaskType
+from ote.api.entities.result_media import ResultMediaEntity
+from ote.api.entities.scored_label import ScoredLabel
+from ote.api.utils.anomaly_utils import create_detection_annotation_from_anomaly_heatmap
+from ote.api.utils.segmentation_utils import create_annotation_from_segmentation_map
 from pytorch_lightning.callbacks import Callback
 
 logger = get_logger(__name__)

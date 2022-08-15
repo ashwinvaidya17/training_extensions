@@ -20,10 +20,10 @@ from copy import deepcopy
 from typing import List, Type
 
 from adapters.anomalib.data.mvtec import OteMvtecDataset
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.label_schema import LabelSchemaEntity
-from ote_sdk.entities.model_template import TaskType
-from ote_sdk.test_suite.training_tests_actions import (
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.label_schema import LabelSchemaEntity
+from ote.api.entities.model_template import TaskType
+from ote.api.test_suite.training_tests_actions import (
     BaseOTETestAction,
     OTETestExportAction,
     OTETestExportEvaluationAction,
@@ -37,7 +37,7 @@ from ote_sdk.test_suite.training_tests_actions import (
     OTETestTrainingAction,
     OTETestTrainingEvaluationAction,
 )
-from ote_sdk.test_suite.training_tests_common import ROOT_PATH_KEY, make_paths_be_abs
+from ote.api.test_suite.training_tests_common import ROOT_PATH_KEY, make_paths_be_abs
 
 logger = logging.getLogger(__name__)
 

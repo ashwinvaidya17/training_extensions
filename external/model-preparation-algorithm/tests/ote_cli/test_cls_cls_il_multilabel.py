@@ -6,8 +6,8 @@
 import os
 
 import pytest
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_component
 
+from ote.api.test_suite.e2e_test_system import e2e_pytest_component
 from ote.cli.registry import Registry
 from ote.cli.utils.tests import (
     create_venv,
@@ -33,44 +33,48 @@ from ote.cli.utils.tests import (
 
 # Pre-train w/ 'car', 'tree' classes
 args0 = {
-    '--train-ann-file': 'data/car_tree_bug/annotations/multilabel_car_tree.json',
-    '--train-data-roots': 'data/car_tree_bug/images',
-    '--val-ann-file': 'data/car_tree_bug/annotations/multilabel_car_tree.json',
-    '--val-data-roots': 'data/car_tree_bug/images',
-    '--test-ann-files': 'data/car_tree_bug/annotations/multilabel_car_tree.json',
-    '--test-data-roots': 'data/car_tree_bug/images',
-    '--input': 'data/car_tree_bug/images',
-    'train_params': [
-        'params',
-        '--learning_parameters.num_iters',
-        '2',
-        '--learning_parameters.batch_size',
-        '4',
-    ]
+    "--train-ann-file": "data/car_tree_bug/annotations/multilabel_car_tree.json",
+    "--train-data-roots": "data/car_tree_bug/images",
+    "--val-ann-file": "data/car_tree_bug/annotations/multilabel_car_tree.json",
+    "--val-data-roots": "data/car_tree_bug/images",
+    "--test-ann-files": "data/car_tree_bug/annotations/multilabel_car_tree.json",
+    "--test-data-roots": "data/car_tree_bug/images",
+    "--input": "data/car_tree_bug/images",
+    "train_params": [
+        "params",
+        "--learning_parameters.num_iters",
+        "2",
+        "--learning_parameters.batch_size",
+        "4",
+    ],
 }
 
 # Class-Incremental learning w/ 'car', 'tree', 'bug' classes
 args = {
-    '--train-ann-file': 'data/car_tree_bug/annotations/multilabel_default.json',
-    '--train-data-roots': 'data/car_tree_bug/images',
-    '--val-ann-file': 'data/car_tree_bug/annotations/multilabel_default.json',
-    '--val-data-roots': 'data/car_tree_bug/images',
-    '--test-ann-files': 'data/car_tree_bug/annotations/multilabel_default.json',
-    '--test-data-roots': 'data/car_tree_bug/images',
-    '--input': 'data/car_tree_bug/images',
-    'train_params': [
-        'params',
-        '--learning_parameters.num_iters',
-        '2',
-        '--learning_parameters.batch_size',
-        '4',
-    ]
+    "--train-ann-file": "data/car_tree_bug/annotations/multilabel_default.json",
+    "--train-data-roots": "data/car_tree_bug/images",
+    "--val-ann-file": "data/car_tree_bug/annotations/multilabel_default.json",
+    "--val-data-roots": "data/car_tree_bug/images",
+    "--test-ann-files": "data/car_tree_bug/annotations/multilabel_default.json",
+    "--test-data-roots": "data/car_tree_bug/images",
+    "--input": "data/car_tree_bug/images",
+    "train_params": [
+        "params",
+        "--learning_parameters.num_iters",
+        "2",
+        "--learning_parameters.batch_size",
+        "4",
+    ],
 }
 
-root = '/tmp/ote/cli_multilabel/'
+root = "/tmp/ote/cli_multilabel/"
 ote_dir = os.getcwd()
 
-templates = Registry('external/model-preparation-algorithm').filter(task_type='CLASSIFICATION').templates
+templates = (
+    Registry("external/model-preparation-algorithm")
+    .filter(task_type="CLASSIFICATION")
+    .templates
+)
 templates_ids = [template.model_template_id for template in templates]
 
 
@@ -86,7 +90,9 @@ class TestToolsClsClsIncr:
         ote_train_testing(template, root, ote_dir, args0)
         _, template_work_dir, _ = get_some_vars(template, root)
         args1 = args.copy()
-        args1['--load-weights'] = f'{template_work_dir}/trained_{template.model_template_id}/weights.pth'
+        args1[
+            "--load-weights"
+        ] = f"{template_work_dir}/trained_{template.model_template_id}/weights.pth"
         ote_train_testing(template, root, ote_dir, args1)
 
     @e2e_pytest_component

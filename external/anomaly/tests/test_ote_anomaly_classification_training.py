@@ -20,28 +20,28 @@ from typing import Any, Callable, Dict, List, Optional, Type
 
 import pytest
 from adapters.anomalib.logger import get_logger
-from ote_sdk.configuration.helper import create as ote_sdk_configuration_helper_create
-from ote_sdk.entities.model import ModelEntity
-from ote_sdk.entities.model_template import TaskType, parse_model_template
-from ote_sdk.entities.subset import Subset
-from ote_sdk.entities.train_parameters import TrainParameters
-from ote_sdk.test_suite.e2e_test_system import DataCollector, e2e_pytest_performance
-from ote_sdk.test_suite.training_test_case import (
+from ote.api.configuration.helper import create as ote_api_configuration_helper_create
+from ote.api.entities.model import ModelEntity
+from ote.api.entities.model_template import TaskType, parse_model_template
+from ote.api.entities.subset import Subset
+from ote.api.entities.train_parameters import TrainParameters
+from ote.api.test_suite.e2e_test_system import DataCollector, e2e_pytest_performance
+from ote.api.test_suite.training_test_case import (
     OTETestCaseInterface,
     generate_ote_integration_test_case_class,
 )
-from ote_sdk.test_suite.training_tests_actions import (
+from ote.api.test_suite.training_tests_actions import (
     OTETestTrainingAction,
     create_environment_and_task,
 )
-from ote_sdk.test_suite.training_tests_common import (
+from ote.api.test_suite.training_tests_common import (
     KEEP_CONFIG_FIELD_VALUE,
     REALLIFE_USECASE_CONSTANT,
     ROOT_PATH_KEY,
     make_path_be_abs,
     performance_to_score_name_value,
 )
-from ote_sdk.test_suite.training_tests_helper import (
+from ote.api.test_suite.training_tests_helper import (
     DefaultOTETestCreationParametersInterface,
     OTETestHelper,
     OTETrainingTestInterface,
@@ -121,7 +121,7 @@ class AnomalyClassificationTrainingTestParameters(DefaultOTETestCreationParamete
 
 
 # TODO:pfinashx: This function copies with minor change OTETestTrainingAction
-#             from ote_sdk.test_suite.
+#             from ote.api.test_suite.
 #             Try to avoid copying of code.
 class AnomalyDetectionTestTrainingAction(OTETestTrainingAction):
     _name = "training"
@@ -149,7 +149,7 @@ class AnomalyDetectionTestTrainingAction(OTETestTrainingAction):
         self.model_template = parse_model_template(self.template_path)
 
         logger.debug("Set hyperparameters")
-        params = ote_sdk_configuration_helper_create(self.model_template.hyper_parameters.data)
+        params = ote_api_configuration_helper_create(self.model_template.hyper_parameters.data)
         if hasattr(params, "learning_parameters") and hasattr(params.learning_parameters, "early_stopping"):
             if self.num_training_iters != KEEP_CONFIG_FIELD_VALUE:
                 params.learning_parameters.early_stopping.patience = int(self.num_training_iters)
@@ -224,7 +224,11 @@ class TestOTEReallifeAnomalyClassification(OTETrainingTestInterface):
 
     @pytest.fixture
     def params_factories_for_test_actions_fx(
-        self, current_test_parameters_fx, dataset_definitions_fx, ote_current_reference_dir_fx, template_paths_fx
+        self,
+        current_test_parameters_fx,
+        dataset_definitions_fx,
+        ote_current_reference_dir_fx,
+        template_paths_fx,
     ) -> Dict[str, Callable[[], Dict]]:
         logger.debug("params_factories_for_test_actions_fx: begin")
 
@@ -341,5 +345,15 @@ class TestOTEReallifeAnomalyClassification(OTETrainingTestInterface):
         logger.info("data_collector is released")
 
     @e2e_pytest_performance
-    def test(self, test_parameters, test_case_fx, data_collector_fx, cur_test_expected_metrics_callback_fx):
-        test_case_fx.run_stage(test_parameters["test_stage"], data_collector_fx, cur_test_expected_metrics_callback_fx)
+    def test(
+        self,
+        test_parameters,
+        test_case_fx,
+        data_collector_fx,
+        cur_test_expected_metrics_callback_fx,
+    ):
+        test_case_fx.run_stage(
+            test_parameters["test_stage"],
+            data_collector_fx,
+            cur_test_expected_metrics_callback_fx,
+        )

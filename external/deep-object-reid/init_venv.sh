@@ -115,7 +115,7 @@ sed -i "s/force=False/force=True/g" ${venv_dir}/lib/python${PYTHON_VERSION}/site
 pip install -e submodule/ || exit 1
 
 # Install OTE SDK
-pip install -e ../../ote_sdk/ || exit 1
+pip install -e ../../ote/ || exit 1
 
 # Install tasks.
 pip install -e . || exit 1

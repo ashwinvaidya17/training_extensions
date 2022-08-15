@@ -14,8 +14,7 @@ ALGO_DIRS = [
 ]
 IMPORTANT_DIRS = [
     "data/",
-    "otecli/",
-    "ote_sdk/",
+    "ote/",
     "tests/",
 ]
 
@@ -66,7 +65,13 @@ def test(run_algo_tests):
     success *= res
     for algo_dir in ALGO_DIRS:
         if run_algo_tests[algo_dir]:
-            command = ["pytest", os.path.join(algo_dir, "tests", "ote_cli"), "-v", "-rxXs", "--durations=10"]
+            command = [
+                "pytest",
+                os.path.join(algo_dir, "tests", "ote_cli"),
+                "-v",
+                "-rxXs",
+                "--durations=10",
+            ]
             try:
                 res = run(command, env=collect_env_vars(wd), check=True).returncode == 0
             except:

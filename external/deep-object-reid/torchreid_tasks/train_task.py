@@ -21,23 +21,37 @@ from typing import List, Optional
 import shutil
 
 import torchreid
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.metrics import (CurveMetric, LineChartInfo, LineMetricsGroup,
-                                      MetricsGroup, Performance, ScoreMetric)
-from ote_sdk.entities.model import ModelEntity
-from ote_sdk.entities.subset import Subset
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.entities.train_parameters import default_progress_callback, TrainParameters
-from ote_sdk.usecases.tasks.interfaces.training_interface import ITrainingTask
-from scripts.default_config import imagedata_kwargs, lr_scheduler_kwargs, optimizer_kwargs
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.metrics import (
+    CurveMetric,
+    LineChartInfo,
+    LineMetricsGroup,
+    MetricsGroup,
+    Performance,
+    ScoreMetric,
+)
+from ote.api.entities.model import ModelEntity
+from ote.api.entities.subset import Subset
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.entities.train_parameters import default_progress_callback, TrainParameters
+from ote.api.usecases.tasks.interfaces.training_interface import ITrainingTask
+from scripts.default_config import (
+    imagedata_kwargs,
+    lr_scheduler_kwargs,
+    optimizer_kwargs,
+)
 from torchreid.apis.training import run_lr_finder, run_training
 from torchreid_tasks.inference_task import OTEClassificationInferenceTask
 from torchreid_tasks.monitors import DefaultMetricsMonitor
-from torchreid_tasks.utils import (OTEClassificationDataset, TrainingProgressCallback)
+from torchreid_tasks.utils import OTEClassificationDataset, TrainingProgressCallback
 from torchreid.ops import DataParallel
-from torchreid.utils import (load_pretrained_weights, set_random_seed,
-                             check_isfile, resume_from_checkpoint)
-from ote_sdk.utils.argument_checks import (
+from torchreid.utils import (
+    load_pretrained_weights,
+    set_random_seed,
+    check_isfile,
+    resume_from_checkpoint,
+)
+from ote.api.utils.argument_checks import (
     DatasetParamTypeCheck,
     check_input_parameters_type,
 )
@@ -46,7 +60,6 @@ logger = logging.getLogger(__name__)
 
 
 class OTEClassificationTrainingTask(OTEClassificationInferenceTask, ITrainingTask):
-
     @check_input_parameters_type()
     def __init__(self, task_environment: TaskEnvironment):
         super().__init__(task_environment)
@@ -65,7 +78,7 @@ class OTEClassificationTrainingTask(OTEClassificationInferenceTask, ITrainingTas
     @check_input_parameters_type()
     def save_model(self, output_model: ModelEntity):
         for name, path in self._aux_model_snap_paths.items():
-            with open(path, 'rb') as read_file:
+            with open(path, "rb") as read_file:
                 output_model.set_data(name, read_file.read())
         self._save_model(output_model)
 
@@ -79,17 +92,30 @@ class OTEClassificationTrainingTask(OTEClassificationInferenceTask, ITrainingTas
         # Learning curves
         if self.metrics_monitor is not None:
             for key in self.metrics_monitor.get_metric_keys():
-                metric_curve = CurveMetric(xs=self.metrics_monitor.get_metric_timestamps(key),
-                                           ys=self.metrics_monitor.get_metric_values(key), name=key)
-                visualization_info = LineChartInfo(name=key, x_axis_label="Timestamp", y_axis_label=key)
-                output.append(LineMetricsGroup(metrics=[metric_curve], visualization_info=visualization_info))
+                metric_curve = CurveMetric(
+                    xs=self.metrics_monitor.get_metric_timestamps(key),
+                    ys=self.metrics_monitor.get_metric_values(key),
+                    name=key,
+                )
+                visualization_info = LineChartInfo(
+                    name=key, x_axis_label="Timestamp", y_axis_label=key
+                )
+                output.append(
+                    LineMetricsGroup(
+                        metrics=[metric_curve], visualization_info=visualization_info
+                    )
+                )
 
         return output
 
     @check_input_parameters_type({"dataset": DatasetParamTypeCheck})
-    def train(self, dataset: DatasetEntity, output_model: ModelEntity,
-              train_parameters: Optional[TrainParameters] = None):
-        """ Trains a model on a dataset """
+    def train(
+        self,
+        dataset: DatasetEntity,
+        output_model: ModelEntity,
+        train_parameters: Optional[TrainParameters] = None,
+    ):
+        """Trains a model on a dataset"""
 
         train_model = deepcopy(self._model)
 
@@ -100,12 +126,19 @@ class OTEClassificationTrainingTask(OTEClassificationInferenceTask, ITrainingTas
 
         if self._multilabel:
             self._cfg.train.lr = self._cfg.train.lr / self._cfg.sc_integration.lr_scale
-            self._cfg.train.max_epoch = max(int(self._cfg.train.max_epoch / self._cfg.sc_integration.epoch_scale), 1)
+            self._cfg.train.max_epoch = max(
+                int(self._cfg.train.max_epoch / self._cfg.sc_integration.epoch_scale), 1
+            )
 
-        time_monitor = TrainingProgressCallback(update_progress_callback, num_epoch=self._cfg.train.max_epoch,
-                                                num_train_steps=math.ceil(len(dataset.get_subset(Subset.TRAINING)) /
-                                                                          self._cfg.train.batch_size),
-                                                num_val_steps=0, num_test_steps=0)
+        time_monitor = TrainingProgressCallback(
+            update_progress_callback,
+            num_epoch=self._cfg.train.max_epoch,
+            num_train_steps=math.ceil(
+                len(dataset.get_subset(Subset.TRAINING)) / self._cfg.train.batch_size
+            ),
+            num_val_steps=0,
+            num_test_steps=0,
+        )
 
         self.metrics_monitor = DefaultMetricsMonitor()
         self.stop_callback.reset()
@@ -113,76 +146,111 @@ class OTEClassificationTrainingTask(OTEClassificationInferenceTask, ITrainingTas
         set_random_seed(self._cfg.train.seed)
         train_subset = dataset.get_subset(Subset.TRAINING)
         val_subset = dataset.get_subset(Subset.VALIDATION)
-        self._cfg.custom_datasets.roots = [OTEClassificationDataset(train_subset, self._labels, self._multilabel,
-                                                                    self._hierarchical, self._multihead_class_info,
-                                                                    keep_empty_label=self._empty_label in self._labels),
-                                           OTEClassificationDataset(val_subset, self._labels, self._multilabel,
-                                                                    self._hierarchical, self._multihead_class_info,
-                                                                    keep_empty_label=self._empty_label in self._labels)]
+        self._cfg.custom_datasets.roots = [
+            OTEClassificationDataset(
+                train_subset,
+                self._labels,
+                self._multilabel,
+                self._hierarchical,
+                self._multihead_class_info,
+                keep_empty_label=self._empty_label in self._labels,
+            ),
+            OTEClassificationDataset(
+                val_subset,
+                self._labels,
+                self._multilabel,
+                self._hierarchical,
+                self._multihead_class_info,
+                keep_empty_label=self._empty_label in self._labels,
+            ),
+        ]
         datamanager = torchreid.data.ImageDataManager(**imagedata_kwargs(self._cfg))
 
         num_aux_models = len(self._cfg.mutual_learning.aux_configs)
 
-        optimizer = torchreid.optim.build_optimizer(train_model, **optimizer_kwargs(self._cfg))
+        optimizer = torchreid.optim.build_optimizer(
+            train_model, **optimizer_kwargs(self._cfg)
+        )
 
         if self._cfg.lr_finder.enable:
             scheduler = None
         else:
-            scheduler = torchreid.optim.build_lr_scheduler(optimizer, num_iter=datamanager.num_iter,
-                                                           **lr_scheduler_kwargs(self._cfg))
+            scheduler = torchreid.optim.build_lr_scheduler(
+                optimizer,
+                num_iter=datamanager.num_iter,
+                **lr_scheduler_kwargs(self._cfg),
+            )
 
         if self._cfg.model.resume and check_isfile(self._cfg.model.resume):
-            device_ = 'cuda' if self._cfg.use_gpu else 'cpu'
+            device_ = "cuda" if self._cfg.use_gpu else "cpu"
             self._cfg.train.start_epoch = resume_from_checkpoint(
                 self._cfg.model.resume,
                 train_model,
                 optimizer=optimizer,
                 scheduler=scheduler,
-                device=device_
+                device=device_,
             )
             shutil.copy(self._cfg.model.resume, f"{self._scratch_space}/best.pth")
 
         if self._cfg.use_gpu:
             main_device_ids = list(range(self.num_devices))
             extra_device_ids = [main_device_ids for _ in range(num_aux_models)]
-            train_model = DataParallel(train_model, device_ids=main_device_ids,
-                                       output_device=0).cuda(main_device_ids[0])
+            train_model = DataParallel(
+                train_model, device_ids=main_device_ids, output_device=0
+            ).cuda(main_device_ids[0])
         else:
             extra_device_ids = [None for _ in range(num_aux_models)]
 
-
         if self._cfg.lr_finder.enable:
-            _, train_model, optimizer, scheduler = \
-                        run_lr_finder(self._cfg, datamanager, train_model, optimizer, scheduler, None,
-                                      rebuild_model=False, gpu_num=self.num_devices, split_models=False)
+            _, train_model, optimizer, scheduler = run_lr_finder(
+                self._cfg,
+                datamanager,
+                train_model,
+                optimizer,
+                scheduler,
+                None,
+                rebuild_model=False,
+                gpu_num=self.num_devices,
+                split_models=False,
+            )
 
-        _, final_acc = run_training(self._cfg, datamanager, train_model, optimizer,
-                                    scheduler, extra_device_ids, self._cfg.train.lr,
-                                    tb_writer=self.metrics_monitor, perf_monitor=time_monitor,
-                                    stop_callback=self.stop_callback)
+        _, final_acc = run_training(
+            self._cfg,
+            datamanager,
+            train_model,
+            optimizer,
+            scheduler,
+            extra_device_ids,
+            self._cfg.train.lr,
+            tb_writer=self.metrics_monitor,
+            perf_monitor=time_monitor,
+            stop_callback=self.stop_callback,
+        )
 
         training_metrics = self._generate_training_metrics_group()
 
         self.metrics_monitor.close()
         if self.stop_callback.check_stop():
-            logger.info('Training cancelled.')
+            logger.info("Training cancelled.")
             return
 
         logger.info("Training finished.")
 
-        best_snap_path = os.path.join(self._scratch_space, 'best.pth')
+        best_snap_path = os.path.join(self._scratch_space, "best.pth")
         if os.path.isfile(best_snap_path):
             load_pretrained_weights(self._model, best_snap_path)
 
         for filename in os.listdir(self._scratch_space):
-            match = re.match(r'best_(aux_model_[0-9]+\.pth)', filename)
+            match = re.match(r"best_(aux_model_[0-9]+\.pth)", filename)
             if match:
                 aux_model_name = match.group(1)
                 best_aux_snap_path = os.path.join(self._scratch_space, filename)
                 self._aux_model_snap_paths[aux_model_name] = best_aux_snap_path
 
         self.save_model(output_model)
-        performance = Performance(score=ScoreMetric(value=final_acc, name="accuracy"),
-                                  dashboard_metrics=training_metrics)
-        logger.info(f'FINAL MODEL PERFORMANCE {performance}')
+        performance = Performance(
+            score=ScoreMetric(value=final_acc, name="accuracy"),
+            dashboard_metrics=training_metrics,
+        )
+        logger.info(f"FINAL MODEL PERFORMANCE {performance}")
         output_model.performance = performance

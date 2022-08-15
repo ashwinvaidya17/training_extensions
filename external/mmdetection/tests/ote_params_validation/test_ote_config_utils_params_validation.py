@@ -24,13 +24,13 @@ from detection_tasks.apis.detection.config_utils import (
 )
 from detection_tasks.apis.detection.configuration import OTEDetectionConfig
 from mmcv import Config
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.label import Domain, LabelEntity
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_unit
-from ote_sdk.tests.parameters_validation.validation_helper import (
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.label import Domain, LabelEntity
+from ote.api.test_suite.e2e_test_system import e2e_pytest_unit
+from ote.api.tests.parameters_validation.validation_helper import (
     check_value_error_exception_raised,
 )
-from ote_sdk.usecases.reporting.time_monitor_callback import TimeMonitorCallback
+from ote.api.usecases.reporting.time_monitor_callback import TimeMonitorCallback
 
 
 class TestConfigUtilsInputParamsValidation:
@@ -68,7 +68,7 @@ class TestConfigUtilsInputParamsValidation:
             "config": Config(),
             "work_dir": "./work_dir",
             "labels": [label],
-            "domain": Domain.DETECTION
+            "domain": Domain.DETECTION,
         }
         unexpected_float = 1.1
         unexpected_values = [

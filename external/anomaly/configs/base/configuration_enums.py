@@ -16,7 +16,7 @@ Enums needed to define the options of selectable parameters in the configurable 
 # See the License for the specific language governing permissions
 # and limitations under the License.
 
-from ote_sdk.configuration import ConfigurableEnum
+from ote.api.configuration import ConfigurableEnum
 
 
 class POTQuantizationPreset(ConfigurableEnum):

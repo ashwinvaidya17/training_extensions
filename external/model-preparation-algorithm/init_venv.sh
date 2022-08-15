@@ -112,7 +112,7 @@ pip install --no-cache-dir mmcv-full==${MMCV_VERSION} || exit 1
 sed -i "s/force=False/force=True/g" ${venv_dir}/lib/python${PYTHON_VERSION}/site-packages/mmcv/utils/registry.py  # Patch: remedy for MMCV registry collision from mmdet/mmseg
 
 # Install OTE SDK
-pip install -e ../../ote_sdk/ || exit 1
+pip install -e ../../ote/ || exit 1
 
 # Install tasks
 pip install -e ../deep-object-reid || exit 1

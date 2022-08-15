@@ -18,8 +18,8 @@ Progressbar Callback for OTE task
 
 from typing import Optional, Union
 
-from ote_sdk.entities.inference_parameters import InferenceParameters
-from ote_sdk.entities.train_parameters import TrainParameters, default_progress_callback
+from ote.api.entities.inference_parameters import InferenceParameters
+from ote.api.entities.train_parameters import TrainParameters, default_progress_callback
 from pytorch_lightning.callbacks.progress import TQDMProgressBar
 
 

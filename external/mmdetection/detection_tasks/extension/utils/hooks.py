@@ -24,8 +24,8 @@ from mmcv.runner import BaseRunner, EpochBasedRunner
 from mmcv.runner.dist_utils import master_only
 from mmcv.utils import print_log
 
-from ote_sdk.usecases.reporting.time_monitor_callback import TimeMonitorCallback
-from ote_sdk.utils.argument_checks import check_input_parameters_type
+from ote.api.usecases.reporting.time_monitor_callback import TimeMonitorCallback
+from ote.api.utils.argument_checks import check_input_parameters_type
 from mmdet.utils.logger import get_root_logger
 
 
@@ -49,12 +49,14 @@ class CancelTrainingHook(Hook):
     @staticmethod
     def _check_for_stop_signal(runner: BaseRunner):
         work_dir = runner.work_dir
-        stop_filepath = os.path.join(work_dir, '.stop_training')
+        stop_filepath = os.path.join(work_dir, ".stop_training")
         if os.path.exists(stop_filepath):
             if isinstance(runner, EpochBasedRunner):
                 epoch = runner.epoch
                 runner._max_epochs = epoch  # Force runner to stop by pretending it has reached it's max_epoch
-            runner.should_stop = True  # Set this flag to true to stop the current training epoch
+            runner.should_stop = (
+                True  # Set this flag to true to stop the current training epoch
+            )
             os.remove(stop_filepath)
 
     @check_input_parameters_type()
@@ -89,12 +91,11 @@ class EnsureCorrectBestCheckpointHook(Hook):
 
     @check_input_parameters_type()
     def after_run(self, runner: BaseRunner):
-        runner.call_hook('after_train_epoch')
+        runner.call_hook("after_train_epoch")
 
 
 @HOOKS.register_module()
 class OTELoggerHook(LoggerHook):
-
     class Curve:
         def __init__(self):
             self.x = []
@@ -103,16 +104,18 @@ class OTELoggerHook(LoggerHook):
         def __repr__(self):
             points = []
             for x, y in zip(self.x, self.y):
-                points.append(f'({x},{y})')
-            return 'curve[' + ','.join(points) + ']'
+                points.append(f"({x},{y})")
+            return "curve[" + ",".join(points) + "]"
 
     @check_input_parameters_type()
-    def __init__(self,
-                 curves: Optional[Dict[Any, Curve]] = None,
-                 interval: int = 10,
-                 ignore_last: bool = True,
-                 reset_flag: bool = True,
-                 by_epoch: bool = True):
+    def __init__(
+        self,
+        curves: Optional[Dict[Any, Curve]] = None,
+        interval: int = 10,
+        ignore_last: bool = True,
+        reset_flag: bool = True,
+        by_epoch: bool = True,
+    ):
         super().__init__(interval, ignore_last, reset_flag, by_epoch)
         self.curves = curves if curves is not None else defaultdict(self.Curve)
 
@@ -121,7 +124,9 @@ class OTELoggerHook(LoggerHook):
     def log(self, runner: BaseRunner):
         tags = self.get_loggable_tags(runner, allow_text=False)
         if runner.max_epochs is not None:
-            normalized_iter = self.get_iter(runner) / runner.max_iters * runner.max_epochs
+            normalized_iter = (
+                self.get_iter(runner) / runner.max_iters * runner.max_epochs
+            )
         else:
             normalized_iter = self.get_iter(runner)
         for tag, value in tags.items():
@@ -155,9 +160,15 @@ class OTEProgressHook(Hook):
     def before_run(self, runner: BaseRunner):
         total_epochs = runner.max_epochs if runner.max_epochs is not None else 1
         self.time_monitor.total_epochs = total_epochs
-        self.time_monitor.train_steps = runner.max_iters // total_epochs if total_epochs else 1
-        self.time_monitor.steps_per_epoch = self.time_monitor.train_steps + self.time_monitor.val_steps
-        self.time_monitor.total_steps = max(math.ceil(self.time_monitor.steps_per_epoch * total_epochs), 1)
+        self.time_monitor.train_steps = (
+            runner.max_iters // total_epochs if total_epochs else 1
+        )
+        self.time_monitor.steps_per_epoch = (
+            self.time_monitor.train_steps + self.time_monitor.val_steps
+        )
+        self.time_monitor.total_steps = max(
+            math.ceil(self.time_monitor.steps_per_epoch * total_epochs), 1
+        )
         self.time_monitor.current_step = 0
         self.time_monitor.current_epoch = 0
         self.time_monitor.on_train_begin()
@@ -169,7 +180,7 @@ class OTEProgressHook(Hook):
     @check_input_parameters_type()
     def after_epoch(self, runner: BaseRunner):
         # put some runner's training status to use on the other hooks
-        runner.log_buffer.output['current_iters'] = runner.iter
+        runner.log_buffer.output["current_iters"] = runner.iter
         self.time_monitor.on_epoch_end(runner.epoch, runner.log_buffer.output)
 
     @check_input_parameters_type()
@@ -179,12 +190,12 @@ class OTEProgressHook(Hook):
     @check_input_parameters_type()
     def after_iter(self, runner: BaseRunner):
         # put some runner's training status to use on the other hooks
-        runner.log_buffer.output['current_iters'] = runner.iter
+        runner.log_buffer.output["current_iters"] = runner.iter
         self.time_monitor.on_train_batch_end(1)
         if self.verbose:
             progress = self.progress
             if progress >= self.print_threshold:
-                logger.warning(f'training progress {progress:.0f}%')
+                logger.warning(f"training progress {progress:.0f}%")
                 self.print_threshold = (progress + 10) // 10 * 10
 
     @check_input_parameters_type()
@@ -198,7 +209,9 @@ class OTEProgressHook(Hook):
     @check_input_parameters_type()
     def after_run(self, runner: BaseRunner):
         self.time_monitor.on_train_end(1)
-        self.time_monitor.update_progress_callback(int(self.time_monitor.get_progress()))
+        self.time_monitor.update_progress_callback(
+            int(self.time_monitor.get_progress())
+        )
 
     @property
     def progress(self):
@@ -232,22 +245,33 @@ class EarlyStoppingHook(Hook):
     :param min_delta: Minimal decay applied to lr. If the difference between new and old lr is
                       smaller than eps, the update is ignored
     """
-    rule_map = {'greater': lambda x, y: x > y, 'less': lambda x, y: x < y}
-    init_value_map = {'greater': -inf, 'less': inf}
+
+    rule_map = {"greater": lambda x, y: x > y, "less": lambda x, y: x < y}
+    init_value_map = {"greater": -inf, "less": inf}
     greater_keys = [
-        'acc', 'top', 'AR@', 'auc', 'precision', 'mAP', 'mDice', 'mIoU',
-        'mAcc', 'aAcc'
+        "acc",
+        "top",
+        "AR@",
+        "auc",
+        "precision",
+        "mAP",
+        "mDice",
+        "mIoU",
+        "mAcc",
+        "aAcc",
     ]
-    less_keys = ['loss']
+    less_keys = ["loss"]
 
     @check_input_parameters_type()
-    def __init__(self,
-                 interval: int,
-                 metric: str = 'bbox_mAP',
-                 rule: Optional[str] = None,
-                 patience: int = 5,
-                 iteration_patience: int = 500,
-                 min_delta: float = 0.0):
+    def __init__(
+        self,
+        interval: int,
+        metric: str = "bbox_mAP",
+        rule: Optional[str] = None,
+        patience: int = 5,
+        iteration_patience: int = 500,
+        min_delta: float = 0.0,
+    ):
         super().__init__()
         self.patience = patience
         self.iteration_patience = iteration_patience
@@ -255,7 +279,7 @@ class EarlyStoppingHook(Hook):
         self.min_delta = min_delta
         self._init_rule(rule, metric)
 
-        self.min_delta *= 1 if self.rule == 'greater' else -1
+        self.min_delta *= 1 if self.rule == "greater" else -1
         self.last_iter = 0
         self.wait_count = 0
         self.best_score = self.init_value_map[self.rule]
@@ -280,20 +304,23 @@ class EarlyStoppingHook(Hook):
                 comparison rule.
         """
         if rule not in self.rule_map and rule is not None:
-            raise KeyError(f'rule must be greater, less or None, '
-                           f'but got {rule}.')
+            raise KeyError(f"rule must be greater, less or None, " f"but got {rule}.")
 
         if rule is None:
             if key_indicator in self.greater_keys or any(
-                    key in key_indicator for key in self.greater_keys):
-                rule = 'greater'
+                key in key_indicator for key in self.greater_keys
+            ):
+                rule = "greater"
             elif key_indicator in self.less_keys or any(
-                    key in key_indicator for key in self.less_keys):
-                rule = 'less'
+                key in key_indicator for key in self.less_keys
+            ):
+                rule = "less"
             else:
-                raise ValueError(f'Cannot infer the rule for key '
-                                 f'{key_indicator}, thus a specific rule '
-                                 f'must be specified.')
+                raise ValueError(
+                    f"Cannot infer the rule for key "
+                    f"{key_indicator}, thus a specific rule "
+                    f"must be specified."
+                )
         self.rule = rule
         self.key_indicator = key_indicator
         self.compare_func = self.rule_map[self.rule]
@@ -319,15 +346,14 @@ class EarlyStoppingHook(Hook):
             self._do_check_stopping(runner)
 
     def _do_check_stopping(self, runner):
-        if not self._should_check_stopping(
-                runner) or self.warmup_iters > runner.iter:
+        if not self._should_check_stopping(runner) or self.warmup_iters > runner.iter:
             return
 
         if runner.rank == 0:
             if self.key_indicator not in runner.log_buffer.output:
                 raise KeyError(
-                    f'metric {self.key_indicator} does not exist in buffer. Please check '
-                    f'{self.key_indicator} is cached in evaluation output buffer'
+                    f"metric {self.key_indicator} does not exist in buffer. Please check "
+                    f"{self.key_indicator} is cached in evaluation output buffer"
                 )
 
             key_score = runner.log_buffer.output[self.key_indicator]
@@ -344,13 +370,15 @@ class EarlyStoppingHook(Hook):
                             f"{runner.iter - self.last_iter} from the last "
                             f"improvement must be larger than {self.iteration_patience} to trigger "
                             f"Early Stopping.",
-                            logger=runner.logger)
+                            logger=runner.logger,
+                        )
                         return
                     stop_point = runner.epoch if self.by_epoch else runner.iter
                     print_log(
                         f"\nEarly Stopping at :{stop_point} with "
                         f"best {self.key_indicator}: {self.best_score}",
-                        logger=runner.logger)
+                        logger=runner.logger,
+                    )
                     runner.should_stop = True
 
     def _should_check_stopping(self, runner):
@@ -390,24 +418,35 @@ class ReduceLROnPlateauLrUpdaterHook(LrUpdaterHook):
     :param factor: Factor to be multiply with the learning rate.
                    For example, new_lr = current_lr * factor
     """
-    rule_map = {'greater': lambda x, y: x > y, 'less': lambda x, y: x < y}
-    init_value_map = {'greater': -inf, 'less': inf}
+
+    rule_map = {"greater": lambda x, y: x > y, "less": lambda x, y: x < y}
+    init_value_map = {"greater": -inf, "less": inf}
     greater_keys = [
-        'acc', 'top', 'AR@', 'auc', 'precision', 'mAP', 'mDice', 'mIoU',
-        'mAcc', 'aAcc'
+        "acc",
+        "top",
+        "AR@",
+        "auc",
+        "precision",
+        "mAP",
+        "mDice",
+        "mIoU",
+        "mAcc",
+        "aAcc",
     ]
-    less_keys = ['loss']
+    less_keys = ["loss"]
 
     @check_input_parameters_type()
-    def __init__(self,
-                 min_lr: float,
-                 interval: int,
-                 metric: str = 'bbox_mAP',
-                 rule: Optional[str] = None,
-                 factor: float = 0.1,
-                 patience: int = 3,
-                 iteration_patience: int = 300,
-                 **kwargs):
+    def __init__(
+        self,
+        min_lr: float,
+        interval: int,
+        metric: str = "bbox_mAP",
+        rule: Optional[str] = None,
+        factor: float = 0.1,
+        patience: int = 3,
+        iteration_patience: int = 300,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.interval = interval
         self.min_lr = min_lr
@@ -441,20 +480,23 @@ class ReduceLROnPlateauLrUpdaterHook(LrUpdaterHook):
                 comparison rule.
         """
         if rule not in self.rule_map and rule is not None:
-            raise KeyError(f'rule must be greater, less or None, '
-                           f'but got {rule}.')
+            raise KeyError(f"rule must be greater, less or None, " f"but got {rule}.")
 
         if rule is None:
             if key_indicator in self.greater_keys or any(
-                    key in key_indicator for key in self.greater_keys):
-                rule = 'greater'
+                key in key_indicator for key in self.greater_keys
+            ):
+                rule = "greater"
             elif key_indicator in self.less_keys or any(
-                    key in key_indicator for key in self.less_keys):
-                rule = 'less'
+                key in key_indicator for key in self.less_keys
+            ):
+                rule = "less"
             else:
-                raise ValueError(f'Cannot infer the rule for key '
-                                 f'{key_indicator}, thus a specific rule '
-                                 f'must be specified.')
+                raise ValueError(
+                    f"Cannot infer the rule for key "
+                    f"{key_indicator}, thus a specific rule "
+                    f"must be specified."
+                )
         self.rule = rule
         self.key_indicator = key_indicator
         self.compare_func = self.rule_map[self.rule]
@@ -468,8 +510,7 @@ class ReduceLROnPlateauLrUpdaterHook(LrUpdaterHook):
 
     @check_input_parameters_type()
     def get_lr(self, runner: BaseRunner, base_lr: float):
-        if not self._should_check_stopping(
-                runner) or self.warmup_iters > runner.iter:
+        if not self._should_check_stopping(runner) or self.warmup_iters > runner.iter:
             return base_lr
 
         if self.current_lr is None:
@@ -483,7 +524,8 @@ class ReduceLROnPlateauLrUpdaterHook(LrUpdaterHook):
         print_log(
             f"\nBest Score: {self.best_score}, Current Score: {score}, Patience: {self.patience} "
             f"Count: {self.bad_count}",
-            logger=runner.logger)
+            logger=runner.logger,
+        )
         if self.compare_func(score, self.best_score):
             self.best_score = score
             self.bad_count = 0
@@ -498,14 +540,16 @@ class ReduceLROnPlateauLrUpdaterHook(LrUpdaterHook):
                     f"{runner.iter - self.last_iter} from the last "
                     f"improvement must be larger than {self.iteration_patience} to trigger "
                     f"LR dropping.",
-                    logger=runner.logger)
+                    logger=runner.logger,
+                )
                 return self.current_lr
             self.last_iter = runner.iter
             self.bad_count = 0
             print_log(
                 f"\nDrop LR from: {self.current_lr}, to: "
                 f"{max(self.current_lr * self.factor, self.min_lr)}",
-                logger=runner.logger)
+                logger=runner.logger,
+            )
             self.current_lr = max(self.current_lr * self.factor, self.min_lr)
         return self.current_lr
 
@@ -514,10 +558,8 @@ class ReduceLROnPlateauLrUpdaterHook(LrUpdaterHook):
         # TODO: remove overloaded method after fixing the issue
         #  https://github.com/open-mmlab/mmdetection/issues/6572
         for group in runner.optimizer.param_groups:
-            group.setdefault('initial_lr', group['lr'])
-        self.base_lr = [
-            group['initial_lr'] for group in runner.optimizer.param_groups
-        ]
+            group.setdefault("initial_lr", group["lr"])
+        self.base_lr = [group["initial_lr"] for group in runner.optimizer.param_groups]
         self.bad_count = 0
         self.last_iter = 0
         self.current_lr = None
@@ -526,9 +568,8 @@ class ReduceLROnPlateauLrUpdaterHook(LrUpdaterHook):
 
 @HOOKS.register_module()
 class StopLossNanTrainingHook(Hook):
-
     @check_input_parameters_type()
     def after_train_iter(self, runner: BaseRunner):
-        if isnan(runner.outputs['loss'].item()):
+        if isnan(runner.outputs["loss"].item()):
             logger.warning(f"Early Stopping since loss is NaN")
             runner.should_stop = True

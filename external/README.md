@@ -1,6 +1,6 @@
 # OTE Algorithms
 
-This folder contains sub-projects implementing [OTE SDK](../ote_sdk) Task interfaces for different algorithms.
+This folder contains sub-projects implementing [OTE SDK](../ote/api) Task interfaces for different algorithms.
 Every sub-project is fully indepedent from each other, and each of them has its own dependencies and `init_venv.sh` script to initialize virtual environment.
 
 ## Anomaly Classification

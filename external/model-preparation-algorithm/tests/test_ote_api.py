@@ -21,39 +21,39 @@ from mpa_tasks.apis.classification import (
 )
 from mpa_tasks.apis.detection import DetectionInferenceTask, DetectionTrainTask
 from mpa_tasks.apis.segmentation import SegmentationInferenceTask, SegmentationTrainTask
-from ote_sdk.configuration.helper import create
-from ote_sdk.entities.annotation import (
+from ote.api.configuration.helper import create
+from ote.api.entities.annotation import (
     Annotation,
     AnnotationSceneEntity,
     AnnotationSceneKind,
 )
-from ote_sdk.entities.color import Color
-from ote_sdk.entities.dataset_item import DatasetItemEntity
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.id import ID
-from ote_sdk.entities.image import Image
-from ote_sdk.entities.inference_parameters import InferenceParameters
-from ote_sdk.entities.label import Domain, LabelEntity
-from ote_sdk.entities.label_schema import LabelGroup, LabelGroupType, LabelSchemaEntity
-from ote_sdk.entities.metrics import Performance
-from ote_sdk.entities.model import ModelEntity
-from ote_sdk.entities.model_template import (
+from ote.api.entities.color import Color
+from ote.api.entities.dataset_item import DatasetItemEntity
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.id import ID
+from ote.api.entities.image import Image
+from ote.api.entities.inference_parameters import InferenceParameters
+from ote.api.entities.label import Domain, LabelEntity
+from ote.api.entities.label_schema import LabelGroup, LabelGroupType, LabelSchemaEntity
+from ote.api.entities.metrics import Performance
+from ote.api.entities.model import ModelEntity
+from ote.api.entities.model_template import (
     TaskType,
     parse_model_template,
     task_type_to_label_domain,
 )
-from ote_sdk.entities.resultset import ResultSetEntity
-from ote_sdk.entities.scored_label import ScoredLabel
-from ote_sdk.entities.shapes.ellipse import Ellipse
-from ote_sdk.entities.shapes.polygon import Point, Polygon
-from ote_sdk.entities.shapes.rectangle import Rectangle
-from ote_sdk.entities.subset import Subset
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.entities.train_parameters import TrainParameters
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_api
-from ote_sdk.tests.test_helpers import generate_random_annotated_image
-from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType
-from ote_sdk.utils.shape_factory import ShapeFactory
+from ote.api.entities.resultset import ResultSetEntity
+from ote.api.entities.scored_label import ScoredLabel
+from ote.api.entities.shapes.ellipse import Ellipse
+from ote.api.entities.shapes.polygon import Point, Polygon
+from ote.api.entities.shapes.rectangle import Rectangle
+from ote.api.entities.subset import Subset
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.entities.train_parameters import TrainParameters
+from ote.api.test_suite.e2e_test_system import e2e_pytest_api
+from ote.api.tests.test_helpers import generate_random_annotated_image
+from ote.api.usecases.tasks.interfaces.export_interface import ExportType
+from ote.api.utils.shape_factory import ShapeFactory
 
 DEFAULT_CLS_TEMPLATE_DIR = osp.join(
     "configs", "classification", "efficientnet_b0_cls_incr"
@@ -155,7 +155,9 @@ class TestMPAClsAPI:
         hyper_parameters.learning_parameters.num_iters = num_iters
         return hyper_parameters, model_template
 
-    def init_environment(self, params, model_template, multilabel, hierarchical, number_of_images=10):
+    def init_environment(
+        self, params, model_template, multilabel, hierarchical, number_of_images=10
+    ):
         resolution = (224, 224)
         if hierarchical:
             colors = [(0, 255, 0), (0, 0, 255), (255, 0, 0), (0, 0, 0), (230, 230, 250)]
@@ -226,7 +228,9 @@ class TestMPAClsAPI:
 
     @e2e_pytest_api
     @pytest.mark.parametrize(
-        "multilabel,hierarchical", [(False, False), (True, False), (False, True)], ids=["multiclass", "multilabel", "hierarchical"]
+        "multilabel,hierarchical",
+        [(False, False), (True, False), (False, True)],
+        ids=["multiclass", "multilabel", "hierarchical"],
     )
     def test_training_progress_tracking(self, multilabel, hierarchical):
         hyper_parameters, model_template = self.setup_configurable_parameters(
@@ -245,7 +249,10 @@ class TestMPAClsAPI:
 
         train_parameters = TrainParameters
         train_parameters.update_progress = progress_callback
-        output_model = ModelEntity(dataset, task_environment.get_model_configuration(),)
+        output_model = ModelEntity(
+            dataset,
+            task_environment.get_model_configuration(),
+        )
         task.train(dataset, output_model, train_parameters)
 
         assert len(training_progress_curve) > 0
@@ -253,7 +260,9 @@ class TestMPAClsAPI:
 
     @e2e_pytest_api
     @pytest.mark.parametrize(
-        "multilabel,hierarchical", [(False, False), (True, False), (False, True)], ids=["multiclass", "multilabel", "hierarchical"]
+        "multilabel,hierarchical",
+        [(False, False), (True, False), (False, True)],
+        ids=["multiclass", "multilabel", "hierarchical"],
     )
     def test_inference_progress_tracking(self, multilabel, hierarchical):
         hyper_parameters, model_template = self.setup_configurable_parameters(
@@ -279,7 +288,9 @@ class TestMPAClsAPI:
 
     @e2e_pytest_api
     @pytest.mark.parametrize(
-        "multilabel,hierarchical", [(False, False), (True, False), (False, True)], ids=["multiclass", "multilabel", "hierarchical"]
+        "multilabel,hierarchical",
+        [(False, False), (True, False), (False, True)],
+        ids=["multiclass", "multilabel", "hierarchical"],
     )
     def test_inference_task(self, multilabel, hierarchical):
         # Prepare pretrained weights
@@ -303,7 +314,8 @@ class TestMPAClsAPI:
         train_parameters = TrainParameters
         train_parameters.update_progress = progress_callback
         trained_model = ModelEntity(
-            dataset, classification_environment.get_model_configuration(),
+            dataset,
+            classification_environment.get_model_configuration(),
         )
         train_task.train(dataset, trained_model, train_parameters)
         performance_after_train = eval(train_task, trained_model, val_dataset)
@@ -441,7 +453,8 @@ class TestMPADetAPI:
         executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="train_thread")
 
         output_model = ModelEntity(
-            dataset, detection_environment.get_model_configuration(),
+            dataset,
+            detection_environment.get_model_configuration(),
         )
 
         training_progress_curve = []
@@ -497,7 +510,8 @@ class TestMPADetAPI:
         train_parameters = TrainParameters
         train_parameters.update_progress = progress_callback
         output_model = ModelEntity(
-            dataset, detection_environment.get_model_configuration(),
+            dataset,
+            detection_environment.get_model_configuration(),
         )
         task.train(dataset, output_model, train_parameters)
 
@@ -549,7 +563,8 @@ class TestMPADetAPI:
         train_parameters = TrainParameters
         train_parameters.update_progress = progress_callback
         trained_model = ModelEntity(
-            dataset, detection_environment.get_model_configuration(),
+            dataset,
+            detection_environment.get_model_configuration(),
         )
         train_task.train(dataset, trained_model, train_parameters)
         performance_after_train = eval(train_task, trained_model, val_dataset)
@@ -727,7 +742,8 @@ class TestMPASegAPI:
         executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="train_thread")
 
         output_model = ModelEntity(
-            dataset, segmentation_environment.get_model_configuration(),
+            dataset,
+            segmentation_environment.get_model_configuration(),
         )
 
         training_progress_curve = []
@@ -783,7 +799,8 @@ class TestMPASegAPI:
         train_parameters = TrainParameters
         train_parameters.update_progress = progress_callback
         output_model = ModelEntity(
-            dataset, segmentation_environment.get_model_configuration(),
+            dataset,
+            segmentation_environment.get_model_configuration(),
         )
         task.train(dataset, output_model, train_parameters)
 
@@ -836,7 +853,8 @@ class TestMPASegAPI:
         train_parameters = TrainParameters
         train_parameters.update_progress = progress_callback
         trained_model = ModelEntity(
-            dataset, segmentation_environment.get_model_configuration(),
+            dataset,
+            segmentation_environment.get_model_configuration(),
         )
         train_task.train(dataset, trained_model, train_parameters)
         performance_after_train = eval(train_task, trained_model, val_dataset)

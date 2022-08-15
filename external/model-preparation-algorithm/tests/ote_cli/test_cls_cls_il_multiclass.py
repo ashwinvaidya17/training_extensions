@@ -6,7 +6,7 @@
 import os
 
 import pytest
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_component
+from ote.api.test_suite.e2e_test_system import e2e_pytest_component
 
 from ote.cli.registry import Registry
 from ote.cli.utils.tests import (
@@ -33,44 +33,48 @@ from ote.cli.utils.tests import (
 
 # Pre-train w/ 'intel', 'openvino' classes
 args0 = {
-    '--train-ann-file': '',
-    '--train-data-roots': 'data/text_recognition/initial_data',
-    '--val-ann-file': '',
-    '--val-data-roots': 'data/text_recognition/initial_data',
-    '--test-ann-files': '',
-    '--test-data-roots': 'data/text_recognition/initial_data',
-    '--input': 'data/text_recognition/initial_data/intel',
-    'train_params': [
-        'params',
-        '--learning_parameters.num_iters',
-        '2',
-        '--learning_parameters.batch_size',
-        '2',
-    ]
+    "--train-ann-file": "",
+    "--train-data-roots": "data/text_recognition/initial_data",
+    "--val-ann-file": "",
+    "--val-data-roots": "data/text_recognition/initial_data",
+    "--test-ann-files": "",
+    "--test-data-roots": "data/text_recognition/initial_data",
+    "--input": "data/text_recognition/initial_data/intel",
+    "train_params": [
+        "params",
+        "--learning_parameters.num_iters",
+        "2",
+        "--learning_parameters.batch_size",
+        "2",
+    ],
 }
 
 # Pre-train w/ 'intel', 'openvino', 'opencv' classes
 args = {
-    '--train-ann-file': '',
-    '--train-data-roots': 'data/text_recognition/IL_data',
-    '--val-ann-file': '',
-    '--val-data-roots': 'data/text_recognition/IL_data',
-    '--test-ann-files': '',
-    '--test-data-roots': 'data/text_recognition/IL_data',
-    '--input': 'data/text_recognition/IL_data/intel',
-    'train_params': [
-        'params',
-        '--learning_parameters.num_iters',
-        '2',
-        '--learning_parameters.batch_size',
-        '4',
-    ]
+    "--train-ann-file": "",
+    "--train-data-roots": "data/text_recognition/IL_data",
+    "--val-ann-file": "",
+    "--val-data-roots": "data/text_recognition/IL_data",
+    "--test-ann-files": "",
+    "--test-data-roots": "data/text_recognition/IL_data",
+    "--input": "data/text_recognition/IL_data/intel",
+    "train_params": [
+        "params",
+        "--learning_parameters.num_iters",
+        "2",
+        "--learning_parameters.batch_size",
+        "4",
+    ],
 }
 
-root = '/tmp/ote/cli_multiclass/'
+root = "/tmp/ote/cli_multiclass/"
 ote_dir = os.getcwd()
 
-templates = Registry('external/model-preparation-algorithm').filter(task_type='CLASSIFICATION').templates
+templates = (
+    Registry("external/model-preparation-algorithm")
+    .filter(task_type="CLASSIFICATION")
+    .templates
+)
 templates_ids = [template.model_template_id for template in templates]
 
 
@@ -86,7 +90,9 @@ class TestToolsClsClsIncr:
         ote_train_testing(template, root, ote_dir, args0)
         _, template_work_dir, _ = get_some_vars(template, root)
         args1 = args.copy()
-        args1['--load-weights'] = f'{template_work_dir}/trained_{template.model_template_id}/weights.pth'
+        args1[
+            "--load-weights"
+        ] = f"{template_work_dir}/trained_{template.model_template_id}/weights.pth"
         ote_train_testing(template, root, ote_dir, args1)
 
     @e2e_pytest_component

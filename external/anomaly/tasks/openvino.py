@@ -36,36 +36,36 @@ from compression.graph import load_model, save_model
 from compression.graph.model_utils import compress_model_weights, get_nodes_by_type
 from compression.pipeline.initializer import create_pipeline
 from omegaconf import OmegaConf
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.inference_parameters import (
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.inference_parameters import (
     InferenceParameters,
     default_progress_callback,
 )
-from ote_sdk.entities.model import (
+from ote.api.entities.model import (
     ModelEntity,
     ModelFormat,
     ModelOptimizationType,
     ModelPrecision,
     OptimizationMethod,
 )
-from ote_sdk.entities.model_template import TaskType
-from ote_sdk.entities.optimization_parameters import OptimizationParameters
-from ote_sdk.entities.result_media import ResultMediaEntity
-from ote_sdk.entities.resultset import ResultSetEntity
-from ote_sdk.entities.scored_label import ScoredLabel
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.serialization.label_mapper import LabelSchemaMapper, label_schema_to_bytes
-from ote_sdk.usecases.evaluation.metrics_helper import MetricsHelper
-from ote_sdk.usecases.exportable_code import demo
-from ote_sdk.usecases.tasks.interfaces.deployment_interface import IDeploymentTask
-from ote_sdk.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
-from ote_sdk.usecases.tasks.interfaces.inference_interface import IInferenceTask
-from ote_sdk.usecases.tasks.interfaces.optimization_interface import (
+from ote.api.entities.model_template import TaskType
+from ote.api.entities.optimization_parameters import OptimizationParameters
+from ote.api.entities.result_media import ResultMediaEntity
+from ote.api.entities.resultset import ResultSetEntity
+from ote.api.entities.scored_label import ScoredLabel
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.serialization.label_mapper import LabelSchemaMapper, label_schema_to_bytes
+from ote.api.usecases.evaluation.metrics_helper import MetricsHelper
+from ote.api.usecases.exportable_code import demo
+from ote.api.usecases.tasks.interfaces.deployment_interface import IDeploymentTask
+from ote.api.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
+from ote.api.usecases.tasks.interfaces.inference_interface import IInferenceTask
+from ote.api.usecases.tasks.interfaces.optimization_interface import (
     IOptimizationTask,
     OptimizationType,
 )
-from ote_sdk.utils.anomaly_utils import create_detection_annotation_from_anomaly_heatmap
-from ote_sdk.utils.segmentation_utils import create_annotation_from_segmentation_map
+from ote.api.utils.anomaly_utils import create_detection_annotation_from_anomaly_heatmap
+from ote.api.utils.segmentation_utils import create_annotation_from_segmentation_map
 
 logger = get_logger(__name__)
 
@@ -165,13 +165,17 @@ class OpenVINOTask(IInferenceTask, IEvaluationTask, IOptimizationTask, IDeployme
                 label = self.anomalous_label if image_result.pred_score >= 0.5 else self.normal_label
             elif self.task_type == TaskType.ANOMALY_SEGMENTATION:
                 annotations = create_annotation_from_segmentation_map(
-                    pred_mask, image_result.anomaly_map.squeeze(), {0: self.normal_label, 1: self.anomalous_label}
+                    pred_mask,
+                    image_result.anomaly_map.squeeze(),
+                    {0: self.normal_label, 1: self.anomalous_label},
                 )
                 dataset_item.append_annotations(annotations)
                 label = self.normal_label if len(annotations) == 0 else self.anomalous_label
             elif self.task_type == TaskType.ANOMALY_DETECTION:
                 annotations = create_detection_annotation_from_anomaly_heatmap(
-                    pred_mask, image_result.anomaly_map.squeeze(), {0: self.normal_label, 1: self.anomalous_label}
+                    pred_mask,
+                    image_result.anomaly_map.squeeze(),
+                    {0: self.normal_label, 1: self.anomalous_label},
                 )
                 dataset_item.append_annotations(annotations)
                 label = self.normal_label if len(annotations) == 0 else self.anomalous_label
@@ -194,17 +198,26 @@ class OpenVINOTask(IInferenceTask, IEvaluationTask, IOptimizationTask, IDeployme
     def get_meta_data(self) -> Dict:
         """Get Meta Data."""
 
-        image_threshold = np.frombuffer(self.task_environment.model.get_data("image_threshold"), dtype=np.float32)
-        pixel_threshold = np.frombuffer(self.task_environment.model.get_data("pixel_threshold"), dtype=np.float32)
-        min_value = np.frombuffer(self.task_environment.model.get_data("min"), dtype=np.float32)
-        max_value = np.frombuffer(self.task_environment.model.get_data("max"), dtype=np.float32)
-        meta_data = dict(
-            image_threshold=image_threshold,
-            pixel_threshold=pixel_threshold,
-            min=min_value,
-            max=max_value,
-        )
-        return meta_data
+        if self.task_environment.model is not None:
+            image_threshold = np.frombuffer(
+                self.task_environment.model.get_data("image_threshold"),
+                dtype=np.float32,
+            )
+            pixel_threshold = np.frombuffer(
+                self.task_environment.model.get_data("pixel_threshold"),
+                dtype=np.float32,
+            )
+            min_value = np.frombuffer(self.task_environment.model.get_data("min"), dtype=np.float32)
+            max_value = np.frombuffer(self.task_environment.model.get_data("max"), dtype=np.float32)
+            meta_data = dict(
+                image_threshold=image_threshold,
+                pixel_threshold=pixel_threshold,
+                min=min_value,
+                max=max_value,
+            )
+            return meta_data
+        else:
+            raise ValueError("Cannot access get_data method. Model is None.")
 
     def evaluate(self, output_resultset: ResultSetEntity, evaluation_metric: Optional[str] = None):
         """Evaluate the performance of the model.
@@ -234,7 +247,12 @@ class OpenVINOTask(IInferenceTask, IEvaluationTask, IOptimizationTask, IDeployme
                 algorithms = ADDict(json.load(f_src))["algorithms"]
         else:
             algorithms = [
-                ADDict({"name": "DefaultQuantization", "params": {"target_device": "ANY", "shuffle_data": True}})
+                ADDict(
+                    {
+                        "name": "DefaultQuantization",
+                        "params": {"target_device": "ANY", "shuffle_data": True},
+                    }
+                )
             ]
         for algo in algorithms:
             algo.params.stat_subset_size = hparams.pot_parameters.stat_subset_size
@@ -298,10 +316,21 @@ class OpenVINOTask(IInferenceTask, IEvaluationTask, IOptimizationTask, IDeployme
 
         with tempfile.TemporaryDirectory() as tempdir:
             save_model(compressed_model, tempdir, model_name="model")
-            self.__load_weights(path=os.path.join(tempdir, "model.xml"), output_model=output_model, key="openvino.xml")
-            self.__load_weights(path=os.path.join(tempdir, "model.bin"), output_model=output_model, key="openvino.bin")
+            self.__load_weights(
+                path=os.path.join(tempdir, "model.xml"),
+                output_model=output_model,
+                key="openvino.xml",
+            )
+            self.__load_weights(
+                path=os.path.join(tempdir, "model.bin"),
+                output_model=output_model,
+                key="openvino.bin",
+            )
 
-        output_model.set_data("label_schema.json", label_schema_to_bytes(self.task_environment.label_schema))
+        output_model.set_data(
+            "label_schema.json",
+            label_schema_to_bytes(self.task_environment.label_schema),
+        )
         output_model.set_data("image_threshold", self.task_environment.model.get_data("image_threshold"))
         output_model.set_data("pixel_threshold", self.task_environment.model.get_data("pixel_threshold"))
         output_model.set_data("min", self.task_environment.model.get_data("min"))
@@ -366,7 +395,8 @@ class OpenVINOTask(IInferenceTask, IEvaluationTask, IOptimizationTask, IDeployme
 
         configuration = {
             "image_threshold": np.frombuffer(
-                self.task_environment.model.get_data("image_threshold"), dtype=np.float32
+                self.task_environment.model.get_data("image_threshold"),
+                dtype=np.float32,
             ).item(),
             "min": np.frombuffer(self.task_environment.model.get_data("min"), dtype=np.float32).item(),
             "max": np.frombuffer(self.task_environment.model.get_data("max"), dtype=np.float32).item(),
@@ -382,11 +412,13 @@ class OpenVINOTask(IInferenceTask, IEvaluationTask, IOptimizationTask, IDeployme
 
         if "pixel_threshold" in self.task_environment.model.model_adapters.keys():
             configuration["pixel_threshold"] = np.frombuffer(
-                self.task_environment.model.get_data("pixel_threshold"), dtype=np.float32
+                self.task_environment.model.get_data("pixel_threshold"),
+                dtype=np.float32,
             ).item()
         else:
             configuration["pixel_threshold"] = np.frombuffer(
-                self.task_environment.model.get_data("image_threshold"), dtype=np.float32
+                self.task_environment.model.get_data("image_threshold"),
+                dtype=np.float32,
             ).item()
 
         return configuration
@@ -416,18 +448,35 @@ class OpenVINOTask(IInferenceTask, IEvaluationTask, IOptimizationTask, IDeployme
         zip_buffer = io.BytesIO()
         with ZipFile(zip_buffer, "w") as arch:
             # model files
-            arch.writestr(os.path.join("model", "model.xml"), self.task_environment.model.get_data("openvino.xml"))
-            arch.writestr(os.path.join("model", "model.bin"), self.task_environment.model.get_data("openvino.bin"))
-            arch.writestr(os.path.join("model", "config.json"), json.dumps(parameters, ensure_ascii=False, indent=4))
+            arch.writestr(
+                os.path.join("model", "model.xml"),
+                self.task_environment.model.get_data("openvino.xml"),
+            )
+            arch.writestr(
+                os.path.join("model", "model.bin"),
+                self.task_environment.model.get_data("openvino.bin"),
+            )
+            arch.writestr(
+                os.path.join("model", "config.json"),
+                json.dumps(parameters, ensure_ascii=False, indent=4),
+            )
             # model_wrappers files
             for root, _, files in os.walk(os.path.dirname(adapters.anomalib.exportable_code.__file__)):
                 for file in files:
                     file_path = os.path.join(root, file)
                     arch.write(
-                        file_path, os.path.join("python", "model_wrappers", file_path.split("exportable_code/")[1])
+                        file_path,
+                        os.path.join(
+                            "python",
+                            "model_wrappers",
+                            file_path.split("exportable_code/")[1],
+                        ),
                     )
             # other python files
-            arch.write(os.path.join(work_dir, "requirements.txt"), os.path.join("python", "requirements.txt"))
+            arch.write(
+                os.path.join(work_dir, "requirements.txt"),
+                os.path.join("python", "requirements.txt"),
+            )
             arch.write(os.path.join(work_dir, "LICENSE"), os.path.join("python", "LICENSE"))
             arch.write(os.path.join(work_dir, "README.md"), os.path.join("python", "README.md"))
             arch.write(os.path.join(work_dir, "demo.py"), os.path.join("python", "demo.py"))

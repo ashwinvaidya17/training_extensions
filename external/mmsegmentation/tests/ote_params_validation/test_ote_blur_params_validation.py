@@ -4,11 +4,11 @@
 import numpy as np
 from openvino.model_zoo.model_api.adapters.openvino_adapter import OpenvinoAdapter
 
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_unit
-from ote_sdk.tests.parameters_validation.validation_helper import (
+from ote.api.test_suite.e2e_test_system import e2e_pytest_unit
+from ote.api.tests.parameters_validation.validation_helper import (
     check_value_error_exception_raised,
 )
-from ote_sdk.usecases.adapters.model_adapter import IDataSource
+from ote.api.usecases.adapters.model_adapter import IDataSource
 from segmentation_tasks.apis.segmentation.model_wrappers.blur import BlurSegmentation
 
 

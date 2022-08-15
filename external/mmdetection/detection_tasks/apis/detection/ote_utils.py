@@ -20,13 +20,13 @@ from typing import Callable, Optional, Sequence, Union
 
 import numpy as np
 import yaml
-from ote_sdk.entities.color import Color
-from ote_sdk.entities.id import ID
-from ote_sdk.entities.label import Domain, LabelEntity
-from ote_sdk.entities.label_schema import LabelGroup, LabelGroupType, LabelSchemaEntity
-from ote_sdk.entities.train_parameters import UpdateProgressCallback
-from ote_sdk.usecases.reporting.time_monitor_callback import TimeMonitorCallback
-from ote_sdk.utils.argument_checks import (
+from ote.api.entities.color import Color
+from ote.api.entities.id import ID
+from ote.api.entities.label import Domain, LabelEntity
+from ote.api.entities.label_schema import LabelGroup, LabelGroupType, LabelSchemaEntity
+from ote.api.entities.train_parameters import UpdateProgressCallback
+from ote.api.usecases.reporting.time_monitor_callback import TimeMonitorCallback
+from ote.api.utils.argument_checks import (
     YamlFilePathCheck,
     check_input_parameters_type,
 )
@@ -43,9 +43,13 @@ class ColorPalette:
         candidates_num = 100
         hsv_colors = [(1.0, 1.0, 1.0)]
         for _ in range(1, n):
-            colors_candidates = [(rng.random(), rng.uniform(0.8, 1.0), rng.uniform(0.5, 1.0))
-                                 for _ in range(candidates_num)]
-            min_distances = [self._min_distance(hsv_colors, c) for c in colors_candidates]
+            colors_candidates = [
+                (rng.random(), rng.uniform(0.8, 1.0), rng.uniform(0.5, 1.0))
+                for _ in range(candidates_num)
+            ]
+            min_distances = [
+                self._min_distance(hsv_colors, c) for c in colors_candidates
+            ]
             arg_max = np.argmax(min_distances)
             hsv_colors.append(colors_candidates[arg_max])
 
@@ -76,16 +80,29 @@ class ColorPalette:
 
 
 @check_input_parameters_type()
-def generate_label_schema(label_names: Sequence[str], label_domain: Domain = Domain.DETECTION):
+def generate_label_schema(
+    label_names: Sequence[str], label_domain: Domain = Domain.DETECTION
+):
     colors = ColorPalette(len(label_names)) if len(label_names) > 0 else []
-    not_empty_labels = [LabelEntity(name=name, color=colors[i], domain=label_domain, id=ID(f"{i:08}")) for i, name in
-                        enumerate(label_names)]
-    emptylabel = LabelEntity(name=f"Empty label", color=Color(42, 43, 46),
-                             is_empty=True, domain=label_domain, id=ID(f"{len(not_empty_labels):08}"))
+    not_empty_labels = [
+        LabelEntity(name=name, color=colors[i], domain=label_domain, id=ID(f"{i:08}"))
+        for i, name in enumerate(label_names)
+    ]
+    emptylabel = LabelEntity(
+        name=f"Empty label",
+        color=Color(42, 43, 46),
+        is_empty=True,
+        domain=label_domain,
+        id=ID(f"{len(not_empty_labels):08}"),
+    )
 
     label_schema = LabelSchemaEntity()
-    exclusive_group = LabelGroup(name="labels", labels=not_empty_labels, group_type=LabelGroupType.EXCLUSIVE)
-    empty_group = LabelGroup(name="empty", labels=[emptylabel], group_type=LabelGroupType.EMPTY_LABEL)
+    exclusive_group = LabelGroup(
+        name="labels", labels=not_empty_labels, group_type=LabelGroupType.EXCLUSIVE
+    )
+    empty_group = LabelGroup(
+        name="empty", labels=[emptylabel], group_type=LabelGroupType.EMPTY_LABEL
+    )
     label_schema.add_group(exclusive_group)
     label_schema.add_group(empty_group)
     return label_schema
@@ -100,7 +117,7 @@ def load_template(path):
 
 @check_input_parameters_type()
 def get_task_class(path: str):
-    module_name, class_name = path.rsplit('.', 1)
+    module_name, class_name = path.rsplit(".", 1)
     module = importlib.import_module(module_name)
     return getattr(module, class_name)
 
@@ -117,13 +134,13 @@ class TrainingProgressCallback(TimeMonitorCallback):
         self.past_epoch_duration.append(time.time() - self.start_epoch_time)
         self._calculate_average_epoch()
         score = None
-        if hasattr(self.update_progress_callback, 'metric') and isinstance(logs, dict):
+        if hasattr(self.update_progress_callback, "metric") and isinstance(logs, dict):
             score = logs.get(self.update_progress_callback.metric, None)
             score = float(score) if score is not None else None
             if score is not None:
-                iter_num = logs.get('current_iters', None)
+                iter_num = logs.get("current_iters", None)
                 if iter_num is not None:
-                    print(f'score = {score} at epoch {epoch} / {int(iter_num)}')
+                    print(f"score = {score} at epoch {epoch} / {int(iter_num)}")
                     # as a trick, score (at least if it's accuracy not the loss) and iteration number
                     # could be assembled just using summation and then disassembeled.
                     if 1.0 > score:
@@ -140,7 +157,8 @@ class InferenceProgressCallback(TimeMonitorCallback):
             num_train_steps=0,
             num_val_steps=0,
             num_test_steps=num_test_steps,
-            update_progress_callback=update_progress_callback)
+            update_progress_callback=update_progress_callback,
+        )
 
     def on_test_batch_end(self, batch=None, logs=None):
         super().on_test_batch_end(batch, logs)
@@ -148,20 +166,32 @@ class InferenceProgressCallback(TimeMonitorCallback):
 
 
 class OptimizationProgressCallback(TrainingProgressCallback):
-    """ Progress callback used for optimization using NNCF
-        There are three stages to the progress bar:
-           - 5 % model is loaded
-           - 10 % compressed model is initialized
-           - 10-100 % compressed model is being fine-tuned
+    """Progress callback used for optimization using NNCF
+    There are three stages to the progress bar:
+       - 5 % model is loaded
+       - 10 % compressed model is initialized
+       - 10-100 % compressed model is being fine-tuned
     """
-    def __init__(self, update_progress_callback: UpdateProgressCallback, loading_stage_progress_percentage: int = 5,
-                 initialization_stage_progress_percentage: int = 5):
+
+    def __init__(
+        self,
+        update_progress_callback: UpdateProgressCallback,
+        loading_stage_progress_percentage: int = 5,
+        initialization_stage_progress_percentage: int = 5,
+    ):
         super().__init__(update_progress_callback=update_progress_callback)
-        if loading_stage_progress_percentage + initialization_stage_progress_percentage >= 100:
-            raise RuntimeError('Total optimization progress percentage is more than 100%')
+        if (
+            loading_stage_progress_percentage + initialization_stage_progress_percentage
+            >= 100
+        ):
+            raise RuntimeError(
+                "Total optimization progress percentage is more than 100%"
+            )
 
         self.loading_stage_progress_percentage = loading_stage_progress_percentage
-        self.initialization_stage_progress_percentage = initialization_stage_progress_percentage
+        self.initialization_stage_progress_percentage = (
+            initialization_stage_progress_percentage
+        )
 
         # set loading_stage_progress_percentage from the start as the model is already loaded at this point
         self.update_progress_callback(loading_stage_progress_percentage)
@@ -169,9 +199,19 @@ class OptimizationProgressCallback(TrainingProgressCallback):
     def on_train_begin(self, logs=None):
         super().on_train_begin(logs)
         # Callback initialization takes place here after OTEProgressHook.before_run() is called
-        train_percentage = 100 - self.loading_stage_progress_percentage - self.initialization_stage_progress_percentage
-        loading_stage_steps = self.total_steps * self.loading_stage_progress_percentage / train_percentage
-        initialization_stage_steps = self.total_steps * self.initialization_stage_progress_percentage / train_percentage
+        train_percentage = (
+            100
+            - self.loading_stage_progress_percentage
+            - self.initialization_stage_progress_percentage
+        )
+        loading_stage_steps = (
+            self.total_steps * self.loading_stage_progress_percentage / train_percentage
+        )
+        initialization_stage_steps = (
+            self.total_steps
+            * self.initialization_stage_progress_percentage
+            / train_percentage
+        )
         self.total_steps += loading_stage_steps + initialization_stage_steps
 
         self.current_step = loading_stage_steps + initialization_stage_steps
@@ -182,5 +222,7 @@ class OptimizationProgressCallback(TrainingProgressCallback):
         self.update_progress_callback(self.get_progress(), score=logs)
 
     def on_initialization_end(self):
-        self.update_progress_callback(self.loading_stage_progress_percentage +
-                                      self.initialization_stage_progress_percentage)
+        self.update_progress_callback(
+            self.loading_stage_progress_percentage
+            + self.initialization_stage_progress_percentage
+        )

@@ -5,16 +5,16 @@
 import numpy as np
 import pytest
 
-from ote_sdk.configuration.configurable_parameters import ConfigurableParameters
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.label_schema import LabelSchemaEntity
-from ote_sdk.entities.model import ModelConfiguration, ModelEntity
-from ote_sdk.entities.resultset import ResultSetEntity
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_unit
-from ote_sdk.tests.parameters_validation.validation_helper import (
+from ote.api.configuration.configurable_parameters import ConfigurableParameters
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.label_schema import LabelSchemaEntity
+from ote.api.entities.model import ModelConfiguration, ModelEntity
+from ote.api.entities.resultset import ResultSetEntity
+from ote.api.test_suite.e2e_test_system import e2e_pytest_unit
+from ote.api.tests.parameters_validation.validation_helper import (
     check_value_error_exception_raised,
 )
-from ote_sdk.usecases.tasks.interfaces.optimization_interface import OptimizationType
+from ote.api.usecases.tasks.interfaces.optimization_interface import OptimizationType
 from segmentation_tasks.apis.segmentation.configuration import OTESegmentationConfig
 from segmentation_tasks.apis.segmentation.openvino_task import (
     OpenVINOSegmentationInferencer,
@@ -30,9 +30,7 @@ def model():
         ),
         label_schema=LabelSchemaEntity(),
     )
-    return ModelEntity(
-        train_dataset=DatasetEntity(), configuration=model_configuration
-    )
+    return ModelEntity(train_dataset=DatasetEntity(), configuration=model_configuration)
 
 
 class MockOpenVinoTask(OpenVINOSegmentationTask):

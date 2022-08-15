@@ -22,15 +22,15 @@ import numpy as np
 from adapters.anomalib.logger import get_logger
 from anomalib.pre_processing import PreProcessor
 from omegaconf import DictConfig, ListConfig
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.model_template import TaskType
-from ote_sdk.entities.shapes.polygon import Polygon
-from ote_sdk.entities.subset import Subset
-from ote_sdk.utils.dataset_utils import (
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.model_template import TaskType
+from ote.api.entities.shapes.polygon import Polygon
+from ote.api.entities.subset import Subset
+from ote.api.utils.dataset_utils import (
     contains_anomalous_images,
     split_local_global_dataset,
 )
-from ote_sdk.utils.segmentation_utils import mask_from_dataset_item
+from ote.api.utils.segmentation_utils import mask_from_dataset_item
 from pytorch_lightning.core.datamodule import LightningDataModule
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
@@ -59,7 +59,12 @@ class OTEAnomalyDataset(Dataset):
         torch.Size([3, 256, 256])
     """
 
-    def __init__(self, config: Union[DictConfig, ListConfig], dataset: DatasetEntity, task_type: TaskType):
+    def __init__(
+        self,
+        config: Union[DictConfig, ListConfig],
+        dataset: DatasetEntity,
+        task_type: TaskType,
+    ):
         self.config = config
         self.dataset = dataset
         self.task_type = task_type
@@ -77,7 +82,10 @@ class OTEAnomalyDataset(Dataset):
         dataset_item = self.dataset[index]
         item: Dict[str, Union[int, Tensor]] = {}
         item = {"index": index}
-        if self.task_type in (TaskType.ANOMALY_CLASSIFICATION, TaskType.ANOMALY_DETECTION):
+        if self.task_type in (
+            TaskType.ANOMALY_CLASSIFICATION,
+            TaskType.ANOMALY_DETECTION,
+        ):
             # Detection currently relies on image labels only, meaning it'll use image
             #   threshold to find the predicted bounding boxes.
             item["image"] = self.pre_processor(image=dataset_item.numpy)["image"]
@@ -119,7 +127,12 @@ class OTEAnomalyDataModule(LightningDataModule):
         torch.Size([32, 3, 256, 256])
     """
 
-    def __init__(self, config: Union[DictConfig, ListConfig], dataset: DatasetEntity, task_type: TaskType) -> None:
+    def __init__(
+        self,
+        config: Union[DictConfig, ListConfig],
+        dataset: DatasetEntity,
+        task_type: TaskType,
+    ) -> None:
         super().__init__()
         self.config = config
         self.dataset = dataset

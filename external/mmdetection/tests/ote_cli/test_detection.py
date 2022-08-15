@@ -18,7 +18,7 @@ import os
 from subprocess import run
 
 import pytest
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_component
+from ote.api.test_suite.e2e_test_system import e2e_pytest_component
 
 from ote.cli.registry import Registry
 from ote.cli.utils.tests import (
@@ -44,26 +44,26 @@ from ote.cli.utils.tests import (
 )
 
 args = {
-    '--train-ann-file': 'data/airport/annotation_example_train.json',
-    '--train-data-roots': 'data/airport/train',
-    '--val-ann-file': 'data/airport/annotation_example_train.json',
-    '--val-data-roots': 'data/airport/train',
-    '--test-ann-files': 'data/airport/annotation_example_train.json',
-    '--test-data-roots': 'data/airport/train',
-    '--input': 'data/airport/train',
-    'train_params': [
-        'params',
-        '--learning_parameters.num_iters',
-        '2',
-        '--learning_parameters.batch_size',
-        '2'
-    ]
+    "--train-ann-file": "data/airport/annotation_example_train.json",
+    "--train-data-roots": "data/airport/train",
+    "--val-ann-file": "data/airport/annotation_example_train.json",
+    "--val-data-roots": "data/airport/train",
+    "--test-ann-files": "data/airport/annotation_example_train.json",
+    "--test-data-roots": "data/airport/train",
+    "--input": "data/airport/train",
+    "train_params": [
+        "params",
+        "--learning_parameters.num_iters",
+        "2",
+        "--learning_parameters.batch_size",
+        "2",
+    ],
 }
 
-root = '/tmp/ote/cli/'
+root = "/tmp/ote/cli/"
 ote_dir = os.getcwd()
 
-templates = Registry('external/mmdetection').filter(task_type='DETECTION').templates
+templates = Registry("external/mmdetection").filter(task_type="DETECTION").templates
 templates_ids = [template.model_template_id for template in templates]
 
 
@@ -167,5 +167,11 @@ class TestToolsDetection:
 
     @e2e_pytest_component
     def test_notebook(self):
-        work_dir = os.path.join(root, 'mmdetection')
-        assert run(['pytest', '--nbmake', 'notebooks/train.ipynb', '-v'], env=collect_env_vars(work_dir)).returncode == 0
+        work_dir = os.path.join(root, "mmdetection")
+        assert (
+            run(
+                ["pytest", "--nbmake", "notebooks/train.ipynb", "-v"],
+                env=collect_env_vars(work_dir),
+            ).returncode
+            == 0
+        )

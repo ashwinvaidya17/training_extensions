@@ -35,17 +35,17 @@ from anomalib.utils.callbacks.nncf.utils import (
     is_state_nncf,
     wrap_nncf_model,
 )
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.model import (
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.model import (
     ModelEntity,
     ModelFormat,
     ModelOptimizationType,
     ModelPrecision,
     OptimizationMethod,
 )
-from ote_sdk.entities.optimization_parameters import OptimizationParameters
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.usecases.tasks.interfaces.optimization_interface import (
+from ote.api.entities.optimization_parameters import OptimizationParameters
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.usecases.tasks.interfaces.optimization_interface import (
     IOptimizationTask,
     OptimizationType,
 )
@@ -110,7 +110,10 @@ class NNCFTask(InferenceTask, IOptimizationTask):
         """
         # replaces the templates dir with configs and removes task type
         nncf_config_path = os.path.join(
-            self.base_dir.partition("templates")[0], "configs", self.base_dir.split("/")[-1], "compression_config.json"
+            self.base_dir.partition("templates")[0],
+            "configs",
+            self.base_dir.split("/")[-1],
+            "compression_config.json",
         )
 
         with open(nncf_config_path, encoding="utf8") as nncf_config_file:

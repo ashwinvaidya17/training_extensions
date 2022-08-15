@@ -34,25 +34,25 @@ from anomalib.utils.callbacks import (
     MinMaxNormalizationCallback,
 )
 from omegaconf import DictConfig, ListConfig
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.inference_parameters import InferenceParameters
-from ote_sdk.entities.metrics import Performance, ScoreMetric
-from ote_sdk.entities.model import (
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.inference_parameters import InferenceParameters
+from ote.api.entities.metrics import Performance, ScoreMetric
+from ote.api.entities.model import (
     ModelEntity,
     ModelFormat,
     ModelOptimizationType,
     ModelPrecision,
     OptimizationMethod,
 )
-from ote_sdk.entities.model_template import TaskType
-from ote_sdk.entities.resultset import ResultSetEntity
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.serialization.label_mapper import label_schema_to_bytes
-from ote_sdk.usecases.evaluation.metrics_helper import MetricsHelper
-from ote_sdk.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
-from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType, IExportTask
-from ote_sdk.usecases.tasks.interfaces.inference_interface import IInferenceTask
-from ote_sdk.usecases.tasks.interfaces.unload_interface import IUnload
+from ote.api.entities.model_template import TaskType
+from ote.api.entities.resultset import ResultSetEntity
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.serialization.label_mapper import label_schema_to_bytes
+from ote.api.usecases.evaluation.metrics_helper import MetricsHelper
+from ote.api.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
+from ote.api.usecases.tasks.interfaces.export_interface import ExportType, IExportTask
+from ote.api.usecases.tasks.interfaces.inference_interface import IInferenceTask
+from ote.api.usecases.tasks.interfaces.unload_interface import IUnload
 from pytorch_lightning import Trainer
 
 logger = get_logger(__name__)
@@ -254,7 +254,10 @@ class InferenceTask(IInferenceTask, IEvaluationTask, IExportTask, IUnload):
         output_model.precision = self.precision
         output_model.optimization_methods = self.optimization_methods
 
-        output_model.set_data("label_schema.json", label_schema_to_bytes(self.task_environment.label_schema))
+        output_model.set_data(
+            "label_schema.json",
+            label_schema_to_bytes(self.task_environment.label_schema),
+        )
         self._set_metadata(output_model)
 
     def _model_info(self) -> Dict:
@@ -281,7 +284,10 @@ class InferenceTask(IInferenceTask, IEvaluationTask, IExportTask, IUnload):
         buffer = io.BytesIO()
         torch.save(model_info, buffer)
         output_model.set_data("weights.pth", buffer.getvalue())
-        output_model.set_data("label_schema.json", label_schema_to_bytes(self.task_environment.label_schema))
+        output_model.set_data(
+            "label_schema.json",
+            label_schema_to_bytes(self.task_environment.label_schema),
+        )
         self._set_metadata(output_model)
 
         f1_score = self.model.image_metrics.F1Score.compute().item()

@@ -5,10 +5,9 @@ python3 -m venv $WORK_DIR
 source $WORK_DIR/bin/activate
 pip install pip --upgrade
 pip install wheel
-pip install ote_sdk/
 pip install ote/
 pip install pre-commit
-pip install -r ote_sdk/ote_sdk/tests/requirements.txt
+pip install -r ote/api/tests/requirements.txt
 echo ""
 echo ""
 echo ""

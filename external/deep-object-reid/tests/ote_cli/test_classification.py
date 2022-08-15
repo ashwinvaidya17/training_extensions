@@ -17,7 +17,7 @@
 import os
 import pytest
 
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_component
+from ote.api.test_suite.e2e_test_system import e2e_pytest_component
 
 from ote.cli.registry import Registry
 from ote.cli.utils.tests import (
@@ -44,26 +44,30 @@ from ote.cli.utils.tests import (
 
 
 args = {
-    '--train-ann-file': '',
-    '--train-data-roots': 'data/classification/train',
-    '--val-ann-file': '',
-    '--val-data-roots': 'data/classification/val',
-    '--test-ann-files': '',
-    '--test-data-roots': 'data/classification/val',
-    '--input': 'data/classification/val/0',
-    'train_params': [
-        'params',
-        '--learning_parameters.max_num_epochs',
-        '2',
-        '--learning_parameters.batch_size',
-        '2',
-    ]
+    "--train-ann-file": "",
+    "--train-data-roots": "data/classification/train",
+    "--val-ann-file": "",
+    "--val-data-roots": "data/classification/val",
+    "--test-ann-files": "",
+    "--test-data-roots": "data/classification/val",
+    "--input": "data/classification/val/0",
+    "train_params": [
+        "params",
+        "--learning_parameters.max_num_epochs",
+        "2",
+        "--learning_parameters.batch_size",
+        "2",
+    ],
 }
 
-root = '/tmp/ote/cli/'
+root = "/tmp/ote/cli/"
 ote_dir = os.getcwd()
 
-templates = Registry('external/deep-object-reid', experimental=True).filter(task_type='CLASSIFICATION').templates
+templates = (
+    Registry("external/deep-object-reid", experimental=True)
+    .filter(task_type="CLASSIFICATION")
+    .templates
+)
 templates_ids = [template.model_template_id for template in templates]
 
 

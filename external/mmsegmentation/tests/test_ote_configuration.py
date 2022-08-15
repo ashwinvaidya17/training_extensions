@@ -14,8 +14,8 @@
 
 import os.path as osp
 
-from ote_sdk.configuration.helper import convert, create
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_api
+from ote.api.configuration.helper import convert, create
+from ote.api.test_suite.e2e_test_system import e2e_pytest_api
 
 from segmentation_tasks.apis.segmentation.configuration import OTESegmentationConfig
 
@@ -25,5 +25,7 @@ def test_configuration_yaml():
     configuration = OTESegmentationConfig()
     configuration_yaml_str = convert(configuration, str)
     configuration_yaml_converted = create(configuration_yaml_str)
-    configuration_yaml_loaded = create(osp.join('segmentation_tasks', 'apis', 'segmentation', 'configuration.yaml'))
+    configuration_yaml_loaded = create(
+        osp.join("segmentation_tasks", "apis", "segmentation", "configuration.yaml")
+    )
     assert configuration_yaml_converted == configuration_yaml_loaded

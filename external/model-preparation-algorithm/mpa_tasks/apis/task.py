@@ -16,17 +16,23 @@ from mpa.modules.hooks.cancel_interface_hook import CancelInterfaceHook
 from mpa.stage import Stage
 from mpa.utils.config_utils import update_or_add_custom_hook
 from mpa.utils.logger import get_logger
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.model import ModelEntity, ModelPrecision
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.serialization.label_mapper import LabelSchemaMapper
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.model import ModelEntity, ModelPrecision
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.serialization.label_mapper import LabelSchemaMapper
 
 
 logger = get_logger()
 DEFAULT_META_KEYS = (
-    'filename', 'ori_filename', 'ori_shape',
-    'img_shape', 'pad_shape', 'scale_factor',
-    'flip', 'flip_direction', 'img_norm_cfg'
+    "filename",
+    "ori_filename",
+    "ori_shape",
+    "img_shape",
+    "pad_shape",
+    "scale_factor",
+    "flip",
+    "flip_direction",
+    "img_norm_cfg",
 )
 
 
@@ -38,8 +44,8 @@ class BaseTask:
         self._model_name = task_environment.model_template.name
         self._task_type = task_environment.model_template.task_type
         self._labels = task_environment.get_labels(include_empty=False)
-        self._output_path = tempfile.mkdtemp(prefix='MPA-task-')
-        logger.info(f'created output path at {self._output_path}')
+        self._output_path = tempfile.mkdtemp(prefix="MPA-task-")
+        logger.info(f"created output path at {self._output_path}")
         self.confidence_threshold = self._get_confidence_threshold(self._hyperparams)
         # Set default model attributes.
         self._model_label_schema = []
@@ -47,14 +53,16 @@ class BaseTask:
         self._model_ckpt = None
         self._anchors = {}
         if task_environment.model is not None:
-            logger.info('loading the model from the task env.')
+            logger.info("loading the model from the task env.")
             state_dict = self._load_model_state_dict(self._task_environment.model)
             if state_dict:
-                self._model_ckpt = os.path.join(self._output_path, 'env_model_ckpt.pth')
+                self._model_ckpt = os.path.join(self._output_path, "env_model_ckpt.pth")
                 if os.path.exists(self._model_ckpt):
                     os.remove(self._model_ckpt)
                 torch.save(state_dict, self._model_ckpt)
-                self._model_label_schema = self._load_model_label_schema(self._task_environment.model)
+                self._model_label_schema = self._load_model_label_schema(
+                    self._task_environment.model
+                )
 
         # property below will be initialized by initialize()
         self._recipe_cfg = None
@@ -76,25 +84,32 @@ class BaseTask:
 
     @property
     def _precision_from_config(self):
-        return [ModelPrecision.FP16] if self._model_cfg.get('fp16', None) else [ModelPrecision.FP32]
+        return (
+            [ModelPrecision.FP16]
+            if self._model_cfg.get("fp16", None)
+            else [ModelPrecision.FP32]
+        )
 
-    def _run_task(self, stage_module, mode=None, dataset=None, parameters=None, **kwargs):
+    def _run_task(
+        self, stage_module, mode=None, dataset=None, parameters=None, **kwargs
+    ):
         self._initialize(dataset)
         # update model config -> model label schema
         data_classes = [label.name for label in self._labels]
         model_classes = [label.name for label in self._model_label_schema]
-        self._model_cfg['model_classes'] = model_classes
+        self._model_cfg["model_classes"] = model_classes
         if dataset is not None:
             train_data_cfg = Stage.get_train_data_cfg(self._data_cfg)
-            train_data_cfg['data_classes'] = data_classes
+            train_data_cfg["data_classes"] = data_classes
             new_classes = np.setdiff1d(data_classes, model_classes).tolist()
-            train_data_cfg['new_classes'] = new_classes
+            train_data_cfg["new_classes"] = new_classes
 
-        logger.info(f'running task... kwargs = {kwargs}')
+        logger.info(f"running task... kwargs = {kwargs}")
         if self._recipe_cfg is None:
             raise RuntimeError(
                 "'recipe_cfg' is not initialized yet."
-                "call prepare() method before calling this method")
+                "call prepare() method before calling this method"
+            )
 
         if mode is not None:
             self._mode = mode
@@ -102,7 +117,9 @@ class BaseTask:
         common_cfg = ConfigDict(dict(output_path=self._output_path))
 
         # build workflow using recipe configuration
-        workflow = build(self._recipe_cfg, self._mode, stage_type=stage_module, common_cfg=common_cfg)
+        workflow = build(
+            self._recipe_cfg, self._mode, stage_type=stage_module, common_cfg=common_cfg
+        )
 
         # run workflow with task specific model config and data config
         output = workflow.run(
@@ -111,14 +128,14 @@ class BaseTask:
             ir_path=None,
             model_ckpt=self._model_ckpt,
             mode=self._mode,
-            **kwargs
+            **kwargs,
         )
-        logger.info('run task done.')
+        logger.info("run task done.")
         return output
 
     def finalize(self):
         if self._recipe_cfg is not None:
-            if self._recipe_cfg.get('cleanup_outputs', False):
+            if self._recipe_cfg.get("cleanup_outputs", False):
                 if os.path.exists(self._output_path):
                     shutil.rmtree(self._output_path, ignore_errors=False)
 
@@ -153,9 +170,8 @@ class BaseTask:
         return self._hyperparams
 
     def _initialize(self, dataset=None, output_model=None):
-        """ prepare configurations to run a task through MPA's stage
-        """
-        logger.info('initializing....')
+        """prepare configurations to run a task through MPA's stage"""
+        logger.info("initializing....")
         self._init_recipe()
         recipe_hparams = self._init_recipe_hparam()
         if len(recipe_hparams) > 0:
@@ -163,7 +179,9 @@ class BaseTask:
         if "custom_hooks" in self.override_configs:
             override_custom_hooks = self.override_configs.pop("custom_hooks")
             for override_custom_hook in override_custom_hooks:
-                update_or_add_custom_hook(self._recipe_cfg, ConfigDict(override_custom_hook))
+                update_or_add_custom_hook(
+                    self._recipe_cfg, ConfigDict(override_custom_hook)
+                )
         if len(self.override_configs) > 0:
             logger.info(f"before override configs merging = {self._recipe_cfg}")
             self._recipe_cfg.merge_from_dict(self.override_configs)
@@ -172,35 +190,46 @@ class BaseTask:
         # prepare model config
         self._model_cfg = self._init_model_cfg()
 
-        # Remove FP16 config if running on CPU device and revert to FP32 
+        # Remove FP16 config if running on CPU device and revert to FP32
         # https://github.com/pytorch/pytorch/issues/23377
-        if not torch.cuda.is_available() and 'fp16' in self._model_cfg:
-            logger.info(f'Revert FP16 to FP32 on CPU device')
+        if not torch.cuda.is_available() and "fp16" in self._model_cfg:
+            logger.info(f"Revert FP16 to FP32 on CPU device")
             if isinstance(self._model_cfg, Config):
-                del self._model_cfg._cfg_dict['fp16']
+                del self._model_cfg._cfg_dict["fp16"]
             elif isinstance(self._model_cfg, ConfigDict):
-                del self._model_cfg['fp16']
+                del self._model_cfg["fp16"]
         self._precision = self._precision_from_config
 
         # add Cancel tranining hook
-        update_or_add_custom_hook(self._recipe_cfg, ConfigDict(
-            type='CancelInterfaceHook', init_callback=self.on_hook_initialized))
+        update_or_add_custom_hook(
+            self._recipe_cfg,
+            ConfigDict(
+                type="CancelInterfaceHook", init_callback=self.on_hook_initialized
+            ),
+        )
         if self._time_monitor is not None:
-            update_or_add_custom_hook(self._recipe_cfg, ConfigDict(
-                type='OTEProgressHook', time_monitor=self._time_monitor, verbose=True, priority=71))
+            update_or_add_custom_hook(
+                self._recipe_cfg,
+                ConfigDict(
+                    type="OTEProgressHook",
+                    time_monitor=self._time_monitor,
+                    verbose=True,
+                    priority=71,
+                ),
+            )
         if self._learning_curves is not None:
             self._recipe_cfg.log_config.hooks.append(
-                {'type': 'OTELoggerHook', 'curves': self._learning_curves}
+                {"type": "OTELoggerHook", "curves": self._learning_curves}
             )
 
-        logger.info('initialized.')
+        logger.info("initialized.")
 
     @abc.abstractmethod
     def _init_recipe(self):
         """
         initialize the MPA's target recipe. (inclusive of stage type)
         """
-        raise NotImplementedError('this method should be implemented')
+        raise NotImplementedError("this method should be implemented")
 
     def _init_model_cfg(self) -> Union[Config, None]:
         """
@@ -230,17 +259,19 @@ class BaseTask:
         return dict()
 
     def _load_model_state_dict(self, model: ModelEntity):
-        if 'weights.pth' in model.model_adapters:
+        if "weights.pth" in model.model_adapters:
             # If a model has been trained and saved for the task already, create empty model and load weights here
             buffer = io.BytesIO(model.get_data("weights.pth"))
-            model_data = torch.load(buffer, map_location=torch.device('cpu'))
+            model_data = torch.load(buffer, map_location=torch.device("cpu"))
 
             # set confidence_threshold as well
-            self.confidence_threshold = model_data.get('confidence_threshold', self.confidence_threshold)
-            if model_data.get('anchors'):
-                self._anchors = model_data['anchors']
+            self.confidence_threshold = model_data.get(
+                "confidence_threshold", self.confidence_threshold
+            )
+            if model_data.get("anchors"):
+                self._anchors = model_data["anchors"]
 
-            return model_data['model']
+            return model_data["model"]
         else:
             return None
 
@@ -248,7 +279,8 @@ class BaseTask:
         # If a model has been trained and saved for the task already, create empty model and load weights here
         if "label_schema.json" in model.model_adapters:
             import json
-            buffer = json.loads(model.get_data("label_schema.json").decode('utf-8'))
+
+            buffer = json.loads(model.get_data("label_schema.json").decode("utf-8"))
             model_label_schema = LabelSchemaMapper().backward(buffer)
             return model_label_schema.get_labels(include_empty=False)
         else:
@@ -256,20 +288,22 @@ class BaseTask:
 
     @staticmethod
     def _get_meta_keys(pipeline_step):
-        meta_keys = list(pipeline_step.get('meta_keys', DEFAULT_META_KEYS))
-        meta_keys.append('ignored_labels')
-        pipeline_step['meta_keys'] = set(meta_keys)
+        meta_keys = list(pipeline_step.get("meta_keys", DEFAULT_META_KEYS))
+        meta_keys.append("ignored_labels")
+        pipeline_step["meta_keys"] = set(meta_keys)
         return pipeline_step
 
     @staticmethod
     def _get_confidence_threshold(hyperparams):
         confidence_threshold = 0.3
-        if hasattr(hyperparams, 'postprocessing') and hasattr(hyperparams.postprocessing, 'confidence_threshold'):
+        if hasattr(hyperparams, "postprocessing") and hasattr(
+            hyperparams.postprocessing, "confidence_threshold"
+        ):
             confidence_threshold = hyperparams.postprocessing.confidence_threshold
         return confidence_threshold
 
     def cancel_hook_initialized(self, cancel_interface: CancelInterfaceHook):
-        logger.info('cancel hook is initialized')
+        logger.info("cancel hook is initialized")
         self.cancel_interface = cancel_interface
         if self.reserved_cancel:
             self.cancel_interface.cancel()

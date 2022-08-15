@@ -5,8 +5,8 @@ dependencies:
   - "**/setup.py"
 CLI:
   - "ote/cli/**/*"
-SDK:
-  - "ote_sdk/**/*"
+API:
+  - "ote/api/**/*"
 tests:
   - "tests/**/*"
 tasks:

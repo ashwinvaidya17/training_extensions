@@ -15,15 +15,16 @@
 import os
 import pytest
 
-from ote_sdk.entities.model_template import parse_model_template
+from ote.api.entities.model_template import parse_model_template
 
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_component
+from ote.api.test_suite.e2e_test_system import e2e_pytest_component
 
 from ote.cli.registry import Registry
 
-templates = Registry('external', experimental=True).templates
+templates = Registry("external", experimental=True).templates
 paths = [os.path.relpath(template.model_template_path) for template in templates]
 ids = [os.path.relpath(template.model_template_id) for template in templates]
+
 
 class TestTemplates:
     @e2e_pytest_component

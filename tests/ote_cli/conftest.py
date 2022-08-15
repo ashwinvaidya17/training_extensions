@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions
 # and limitations under the License.
 
-from ote_sdk.test_suite.pytest_insertions import *  # noqa #pylint: disable=unused-import
+from ote.api.test_suite.pytest_insertions import *  # noqa #pylint: disable=unused-import
 
 pytest_plugins = get_pytest_plugins_from_ote()
 

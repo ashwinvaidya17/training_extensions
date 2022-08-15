@@ -18,7 +18,7 @@ inference.
 
 ## Repository components
 
-- [OTE SDK](ote_sdk)
+- [OTE API](ote/api)
 - [OTE CLI](ote/cli)
 - [OTE Algorithms](external)
 

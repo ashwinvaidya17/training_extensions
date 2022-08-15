@@ -15,16 +15,18 @@
 from attr import attrs
 from sys import maxsize
 
-from ote_sdk.configuration.elements import (ParameterGroup,
-                                            add_parameter_group,
-                                            boolean_attribute,
-                                            configurable_boolean,
-                                            configurable_float,
-                                            configurable_integer,
-                                            selectable,
-                                            string_attribute)
-from ote_sdk.configuration import ConfigurableParameters
-from ote_sdk.configuration.enums import ModelLifecycle, AutoHPOState
+from ote.api.configuration.elements import (
+    ParameterGroup,
+    add_parameter_group,
+    boolean_attribute,
+    configurable_boolean,
+    configurable_float,
+    configurable_integer,
+    selectable,
+    string_attribute,
+)
+from ote.api.configuration import ConfigurableParameters
+from ote.api.configuration.enums import ModelLifecycle, AutoHPOState
 
 from .configuration_enums import POTQuantizationPreset
 
@@ -50,7 +52,7 @@ class OTEDetectionConfig(ConfigurableParameters):
             warning="Increasing this value may cause the system to use more memory than available, "
             "potentially causing out of memory errors, please update with caution.",
             affects_outcome_of=ModelLifecycle.TRAINING,
-            auto_hpo_state=AutoHPOState.NOT_POSSIBLE
+            auto_hpo_state=AutoHPOState.NOT_POSSIBLE,
         )
 
         num_iters = configurable_integer(
@@ -59,7 +61,7 @@ class OTEDetectionConfig(ConfigurableParameters):
             max_value=100000,
             header="Number of training iterations",
             description="Increasing this value causes the results to be more robust but training time will be longer.",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
         learning_rate = configurable_float(
@@ -69,7 +71,7 @@ class OTEDetectionConfig(ConfigurableParameters):
             header="Learning rate",
             description="Increasing this value will speed up training convergence but might make it unstable.",
             affects_outcome_of=ModelLifecycle.TRAINING,
-            auto_hpo_state=AutoHPOState.NOT_POSSIBLE
+            auto_hpo_state=AutoHPOState.NOT_POSSIBLE,
         )
 
         learning_rate_warmup_iters = configurable_integer(
@@ -78,7 +80,7 @@ class OTEDetectionConfig(ConfigurableParameters):
             max_value=10000,
             header="Number of iterations for learning rate warmup",
             description="",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
         num_workers = configurable_integer(
@@ -87,9 +89,9 @@ class OTEDetectionConfig(ConfigurableParameters):
             max_value=36,
             header="Number of cpu threads to use during batch generation",
             description="Increasing this value might improve training speed however it might cause out of memory "
-                        "errors. If the number of workers is set to zero, data loading will happen in the main "
-                        "training thread.",
-            affects_outcome_of=ModelLifecycle.NONE
+            "errors. If the number of workers is set to zero, data loading will happen in the main "
+            "training thread.",
+            affects_outcome_of=ModelLifecycle.NONE,
         )
 
     @attrs
@@ -101,7 +103,7 @@ class OTEDetectionConfig(ConfigurableParameters):
             default_value=True,
             header="Result based confidence threshold",
             description="Confidence threshold is derived from the results",
-            affects_outcome_of=ModelLifecycle.INFERENCE
+            affects_outcome_of=ModelLifecycle.INFERENCE,
         )
 
         confidence_threshold = configurable_float(
@@ -110,7 +112,7 @@ class OTEDetectionConfig(ConfigurableParameters):
             max_value=1,
             header="Confidence threshold",
             description="This threshold only takes effect if the threshold is not set based on the result.",
-            affects_outcome_of=ModelLifecycle.INFERENCE
+            affects_outcome_of=ModelLifecycle.INFERENCE,
         )
 
     @attrs
@@ -123,21 +125,21 @@ class OTEDetectionConfig(ConfigurableParameters):
             default_value=True,
             header="Enable quantization algorithm",
             description="Enable quantization algorithm",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
         enable_pruning = configurable_boolean(
             default_value=False,
             header="Enable filter pruning algorithm",
             description="Enable filter pruning algorithm",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
         pruning_supported = configurable_boolean(
             default_value=False,
             header="Whether filter pruning is supported",
             description="Whether filter pruning is supported",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
         maximal_accuracy_degradation = configurable_float(
@@ -146,7 +148,7 @@ class OTEDetectionConfig(ConfigurableParameters):
             max_value=100.0,
             header="Maximum accuracy degradation",
             description="The maximal allowed accuracy metric drop",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
     @attrs
@@ -160,12 +162,16 @@ class OTEDetectionConfig(ConfigurableParameters):
             description="Number of data samples used for post-training optimization",
             default_value=300,
             min_value=1,
-            max_value=maxsize
+            max_value=maxsize,
         )
 
-        preset = selectable(default_value=POTQuantizationPreset.PERFORMANCE, header="Preset",
-                            description="Quantization preset that defines quantization scheme",
-                            editable=True, visible_in_ui=True)
+        preset = selectable(
+            default_value=POTQuantizationPreset.PERFORMANCE,
+            header="Preset",
+            description="Quantization preset that defines quantization scheme",
+            editable=True,
+            visible_in_ui=True,
+        )
 
     learning_parameters = add_parameter_group(__LearningParameters)
     postprocessing = add_parameter_group(__Postprocessing)

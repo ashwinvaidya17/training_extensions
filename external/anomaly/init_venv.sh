@@ -112,7 +112,7 @@ pip install -r requirements.txt || exit 1
 pip install -e . || exit 1
 
 # Install OTE SDK
-pip install -e ../../ote_sdk/ || exit 1
+pip install -e ../../ote/ || exit 1
 
 deactivate
 

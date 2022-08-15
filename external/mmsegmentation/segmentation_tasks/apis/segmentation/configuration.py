@@ -15,16 +15,18 @@
 from attr import attrs
 from sys import maxsize
 
-from ote_sdk.configuration.elements import (ParameterGroup,
-                                            add_parameter_group,
-                                            boolean_attribute,
-                                            configurable_boolean,
-                                            configurable_float,
-                                            configurable_integer,
-                                            selectable,
-                                            string_attribute)
-from ote_sdk.configuration.configurable_parameters import ConfigurableParameters
-from ote_sdk.configuration.enums import ModelLifecycle, AutoHPOState
+from ote.api.configuration.elements import (
+    ParameterGroup,
+    add_parameter_group,
+    boolean_attribute,
+    configurable_boolean,
+    configurable_float,
+    configurable_integer,
+    selectable,
+    string_attribute,
+)
+from ote.api.configuration.configurable_parameters import ConfigurableParameters
+from ote.api.configuration.enums import ModelLifecycle, AutoHPOState
 
 from .configuration_enums import POTQuantizationPreset, Models
 
@@ -50,7 +52,7 @@ class OTESegmentationConfig(ConfigurableParameters):
             warning="Increasing this value may cause the system to use more memory than available, "
             "potentially causing out of memory errors, please update with caution.",
             affects_outcome_of=ModelLifecycle.TRAINING,
-            auto_hpo_state=AutoHPOState.NOT_POSSIBLE
+            auto_hpo_state=AutoHPOState.NOT_POSSIBLE,
         )
 
         num_iters = configurable_integer(
@@ -59,7 +61,7 @@ class OTESegmentationConfig(ConfigurableParameters):
             max_value=100000,
             header="Number of training iterations",
             description="Increasing this value causes the results to be more robust but training time will be longer.",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
         learning_rate = configurable_float(
@@ -69,7 +71,7 @@ class OTESegmentationConfig(ConfigurableParameters):
             header="Learning rate",
             description="Increasing this value will speed up training convergence but might make it unstable.",
             affects_outcome_of=ModelLifecycle.TRAINING,
-            auto_hpo_state=AutoHPOState.NOT_POSSIBLE
+            auto_hpo_state=AutoHPOState.NOT_POSSIBLE,
         )
 
         learning_rate_fixed_iters = configurable_integer(
@@ -78,7 +80,7 @@ class OTESegmentationConfig(ConfigurableParameters):
             max_value=5000,
             header="Number of iterations for fixed learning rate",
             description="",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
         learning_rate_warmup_iters = configurable_integer(
@@ -87,7 +89,7 @@ class OTESegmentationConfig(ConfigurableParameters):
             max_value=5000,
             header="Number of iterations for learning rate warmup",
             description="",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
         num_workers = configurable_integer(
@@ -96,9 +98,9 @@ class OTESegmentationConfig(ConfigurableParameters):
             max_value=8,
             header="Number of cpu threads to use during batch generation",
             description="Increasing this value might improve training speed however it might cause out of memory "
-                        "errors. If the number of workers is set to zero, data loading will happen in the main "
-                        "training thread.",
-            affects_outcome_of=ModelLifecycle.NONE
+            "errors. If the number of workers is set to zero, data loading will happen in the main "
+            "training thread.",
+            affects_outcome_of=ModelLifecycle.NONE,
         )
 
         num_checkpoints = configurable_integer(
@@ -107,7 +109,7 @@ class OTESegmentationConfig(ConfigurableParameters):
             max_value=100,
             header="Number of checkpoints that is done during the single training round",
             description="",
-            affects_outcome_of=ModelLifecycle.NONE
+            affects_outcome_of=ModelLifecycle.NONE,
         )
 
     @attrs
@@ -115,27 +117,29 @@ class OTESegmentationConfig(ConfigurableParameters):
         header = string_attribute("Postprocessing")
         description = header
 
-        class_name = selectable(default_value=Models.BlurSegmentation,
-                                header="Model class for inference",
-                                description="Model classes with defined pre- and postprocessing",
-                                editable=False,
-                                visible_in_ui=True)
+        class_name = selectable(
+            default_value=Models.BlurSegmentation,
+            header="Model class for inference",
+            description="Model classes with defined pre- and postprocessing",
+            editable=False,
+            visible_in_ui=True,
+        )
         blur_strength = configurable_integer(
             header="Blur strength",
             description="With a higher value, the segmentation output will be smoother, but less accurate.",
             default_value=1,
             min_value=1,
             max_value=25,
-            affects_outcome_of=ModelLifecycle.INFERENCE
+            affects_outcome_of=ModelLifecycle.INFERENCE,
         )
         soft_threshold = configurable_float(
             default_value=0.5,
             header="Soft threshold",
             description="The threshold to apply to the probability output of the model, for each pixel. A higher value "
-                        "means a stricter segmentation prediction.",
+            "means a stricter segmentation prediction.",
             min_value=0.0,
             max_value=1.0,
-            affects_outcome_of=ModelLifecycle.INFERENCE
+            affects_outcome_of=ModelLifecycle.INFERENCE,
         )
 
     @attrs
@@ -149,14 +153,16 @@ class OTESegmentationConfig(ConfigurableParameters):
             description="Number of data samples used for post-training optimization",
             default_value=300,
             min_value=1,
-            max_value=maxsize
+            max_value=maxsize,
         )
 
-        preset = selectable(default_value=POTQuantizationPreset.PERFORMANCE,
-                            header="Preset",
-                            description="Quantization preset that defines quantization scheme",
-                            editable=False,
-                            visible_in_ui=False)
+        preset = selectable(
+            default_value=POTQuantizationPreset.PERFORMANCE,
+            header="Preset",
+            description="Quantization preset that defines quantization scheme",
+            editable=False,
+            visible_in_ui=False,
+        )
 
     @attrs
     class __NNCFOptimization(ParameterGroup):
@@ -168,21 +174,21 @@ class OTESegmentationConfig(ConfigurableParameters):
             default_value=True,
             header="Enable quantization algorithm",
             description="Enable quantization algorithm",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
         enable_pruning = configurable_boolean(
             default_value=False,
             header="Enable filter pruning algorithm",
             description="Enable filter pruning algorithm",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
         pruning_supported = configurable_boolean(
             default_value=False,
             header="Whether filter pruning is supported",
             description="Whether filter pruning is supported",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
         maximal_accuracy_degradation = configurable_float(
@@ -191,7 +197,7 @@ class OTESegmentationConfig(ConfigurableParameters):
             max_value=100.0,
             header="Maximum accuracy degradation",
             description="The maximal allowed accuracy metric drop",
-            affects_outcome_of=ModelLifecycle.TRAINING
+            affects_outcome_of=ModelLifecycle.TRAINING,
         )
 
     learning_parameters = add_parameter_group(__LearningParameters)

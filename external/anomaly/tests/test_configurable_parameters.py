@@ -23,7 +23,7 @@ import pytest
 from adapters.anomalib.config import get_anomalib_config
 from configs.anomaly_classification.padim import PadimAnomalyClassificationConfig
 from configs.anomaly_classification.stfpm import STFPMAnomalyClassificationConfig
-from ote_sdk.configuration.helper import convert, create
+from ote.api.configuration.helper import convert, create
 
 from tests.helpers.config import get_config_and_task_name
 
@@ -32,7 +32,10 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.parametrize(
     ["model_name", "configurable_parameters"],
-    [("padim", PadimAnomalyClassificationConfig), ("stfpm", STFPMAnomalyClassificationConfig)],
+    [
+        ("padim", PadimAnomalyClassificationConfig),
+        ("stfpm", STFPMAnomalyClassificationConfig),
+    ],
 )
 def test_configuration_yaml(configurable_parameters, model_name):
     # assert that we can parse the template.yaml

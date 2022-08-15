@@ -19,7 +19,7 @@ Configurable parameters for STFPM anomaly base task
 from attr import attrs
 from configs.base import BaseAnomalyConfig
 from configs.base.configuration_enums import EarlyStoppingMetrics
-from ote_sdk.configuration.elements import (
+from ote.api.configuration.elements import (
     ParameterGroup,
     add_parameter_group,
     configurable_float,
@@ -27,7 +27,7 @@ from ote_sdk.configuration.elements import (
     selectable,
     string_attribute,
 )
-from ote_sdk.configuration.model_lifecycle import ModelLifecycle
+from ote.api.configuration.model_lifecycle import ModelLifecycle
 
 
 @attrs

@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 # ISORT CONFIGURATION.                                                        #
 [tool.isort]
 profile = "black"
-known_first_party = ["ote", "ote_sdk"]
+known_first_party = ["ote"]
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -47,7 +47,7 @@ disable = [
 [tool.pylint.typecheck]
 generated-members = ["numpy.*", "torch.*"]
 ignored-modules = [
-    "ote_sdk",
+    "ote",
     "mmseg",
     "segmentation_tasks",
     "mmdet",
@@ -91,7 +91,7 @@ good-names = [
 ]
 
 [tool.pylint.imports]
-known-third-party = ["enchant", "ote_sdk"]
+known-third-party = ["enchant", "ote"]
 
 [tool.pylint.design]
 max-args = 7

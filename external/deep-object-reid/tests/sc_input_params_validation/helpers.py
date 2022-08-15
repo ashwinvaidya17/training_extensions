@@ -4,19 +4,19 @@ OTE parameters validation tests helpers
 
 import numpy as np
 
-from ote_sdk.entities.annotation import (
+from ote.api.entities.annotation import (
     Annotation,
     AnnotationSceneEntity,
     AnnotationSceneKind,
 )
-from ote_sdk.entities.dataset_item import DatasetItemEntity
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.id import ID
-from ote_sdk.entities.image import Image
-from ote_sdk.entities.label import Domain, LabelEntity
-from ote_sdk.entities.scored_label import ScoredLabel
-from ote_sdk.entities.shapes.rectangle import Rectangle
-from ote_sdk.entities.subset import Subset
+from ote.api.entities.dataset_item import DatasetItemEntity
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.id import ID
+from ote.api.entities.image import Image
+from ote.api.entities.label import Domain, LabelEntity
+from ote.api.entities.scored_label import ScoredLabel
+from ote.api.entities.shapes.rectangle import Rectangle
+from ote.api.entities.subset import Subset
 
 
 def load_test_dataset():
@@ -25,7 +25,7 @@ def load_test_dataset():
     def gen_image(resolution, x1, y1, x2, y2):
         w, h = resolution
         image = np.full([h, w, 3], fill_value=255, dtype=np.uint8)
-        image[int(y1 * h): int(y2 * h), int(x1 * w): int(x2 * w), :] = np.array(
+        image[int(y1 * h) : int(y2 * h), int(x1 * w) : int(x2 * w), :] = np.array(
             [0, 128, 128], dtype=np.uint8
         )[None, None, :]
         return image, Rectangle(x1=x1, y1=y1, x2=x2, y2=y2)

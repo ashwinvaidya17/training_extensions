@@ -28,13 +28,12 @@ from typing import Optional
 
 import torch
 import yaml
-from ote_sdk.configuration.helper import create
-from ote_sdk.entities.model import ModelEntity
-from ote_sdk.entities.model_template import TaskType
-from ote_sdk.entities.subset import Subset
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.entities.train_parameters import TrainParameters, UpdateProgressCallback
-
+from ote.api.configuration.helper import create
+from ote.api.entities.model import ModelEntity
+from ote.api.entities.model_template import TaskType
+from ote.api.entities.subset import Subset
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.entities.train_parameters import TrainParameters, UpdateProgressCallback
 from ote.cli.datasets import get_dataset_class
 from ote.cli.utils.importing import get_impl_class
 from ote.cli.utils.io import generate_label_schema, read_model, save_model_data
@@ -912,27 +911,27 @@ class HpoUnpickler(pickle.Unpickler):
         "networkx.classes.multidigraph": {
             "MultiDiGraph",
         },
-        "ote_sdk.configuration.enums.config_element_type": {
+        "ote.api.configuration.enums.config_element_type": {
             "ConfigElementType",
         },
-        "ote_sdk.entities.label_schema": {
+        "ote.api.entities.label_schema": {
             "LabelTree",
             "LabelGroup",
             "LabelGroupType",
             "LabelSchemaEntity",
             "LabelGraph",
         },
-        "ote_sdk.entities.id": {
+        "ote.api.entities.id": {
             "ID",
         },
-        "ote_sdk.entities.label": {
+        "ote.api.entities.label": {
             "Domain",
             "LabelEntity",
         },
-        "ote_sdk.entities.color": {
+        "ote.api.entities.color": {
             "Color",
         },
-        "ote_sdk.entities.model_template": {
+        "ote.api.entities.model_template": {
             "ModelTemplate",
             "TaskFamily",
             "TaskType",

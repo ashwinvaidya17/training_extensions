@@ -17,8 +17,8 @@ import copy
 from typing import Dict, Any, Optional
 import numpy as np
 
-from ote_sdk.entities.label import Domain
-from ote_sdk.utils.argument_checks import check_input_parameters_type
+from ote.api.entities.label import Domain
+from ote.api.utils.argument_checks import check_input_parameters_type
 
 from mmdet.datasets.builder import PIPELINES
 
@@ -44,30 +44,33 @@ class LoadImageFromOTEDataset:
 
     @check_input_parameters_type()
     def __call__(self, results: Dict[str, Any]):
-        dataset_item = results['dataset_item']
+        dataset_item = results["dataset_item"]
         img = dataset_item.numpy
         shape = img.shape
 
-        assert img.shape[0] == results['height'], f"{img.shape[0]} != {results['height']}"
-        assert img.shape[1] == results['width'], f"{img.shape[1]} != {results['width']}"
+        assert (
+            img.shape[0] == results["height"]
+        ), f"{img.shape[0]} != {results['height']}"
+        assert img.shape[1] == results["width"], f"{img.shape[1]} != {results['width']}"
 
         filename = f"Dataset item index {results['index']}"
-        results['filename'] = filename
-        results['ori_filename'] = filename
-        results['img'] = img
-        results['img_shape'] = shape
-        results['ori_shape'] = shape
+        results["filename"] = filename
+        results["ori_filename"] = filename
+        results["img"] = img
+        results["img_shape"] = shape
+        results["ori_shape"] = shape
         # Set initial values for default meta_keys
-        results['pad_shape'] = shape
+        results["pad_shape"] = shape
         num_channels = 1 if len(shape) < 3 else shape[2]
-        results['img_norm_cfg'] = dict(
+        results["img_norm_cfg"] = dict(
             mean=np.zeros(num_channels, dtype=np.float32),
             std=np.ones(num_channels, dtype=np.float32),
-            to_rgb=False)
-        results['img_fields'] = ['img']
+            to_rgb=False,
+        )
+        results["img_fields"] = ["img"]
 
         if self.to_float32:
-            results['img'] = results['img'].astype(np.float32)
+            results["img"] = results["img"].astype(np.float32)
 
         return results
 
@@ -84,8 +87,17 @@ class LoadAnnotationFromOTEDataset:
     """
 
     @check_input_parameters_type()
-    def __init__(self, min_size : int, with_bbox: bool = True, with_label: bool = True, with_mask: bool = False, with_seg: bool = False,
-                 poly2mask: bool = True, with_text: bool = False, domain: Optional[Domain] = None):
+    def __init__(
+        self,
+        min_size: int,
+        with_bbox: bool = True,
+        with_label: bool = True,
+        with_mask: bool = False,
+        with_seg: bool = False,
+        poly2mask: bool = True,
+        with_text: bool = False,
+        domain: Optional[Domain] = None,
+    ):
         self.with_bbox = with_bbox
         self.with_label = with_label
         self.with_mask = with_mask
@@ -97,29 +109,31 @@ class LoadAnnotationFromOTEDataset:
 
     @staticmethod
     def _load_bboxes(results, ann_info):
-        results['bbox_fields'].append('gt_bboxes')
-        results['gt_bboxes'] = copy.deepcopy(ann_info['bboxes'])
+        results["bbox_fields"].append("gt_bboxes")
+        results["gt_bboxes"] = copy.deepcopy(ann_info["bboxes"])
         return results
 
     @staticmethod
     def _load_labels(results, ann_info):
-        results['gt_labels'] = copy.deepcopy(ann_info['labels'])
+        results["gt_labels"] = copy.deepcopy(ann_info["labels"])
         return results
 
     @staticmethod
     def _load_masks(results, ann_info):
-        results['mask_fields'].append('gt_masks')
-        results['gt_masks'] = copy.deepcopy(ann_info['masks'])
+        results["mask_fields"].append("gt_masks")
+        results["gt_masks"] = copy.deepcopy(ann_info["masks"])
         return results
 
     @check_input_parameters_type()
     def __call__(self, results: Dict[str, Any]):
-        dataset_item = results['dataset_item']
-        label_list = results['ann_info']['label_list']
-        ann_info = get_annotation_mmdet_format(dataset_item, label_list, self.domain, self.min_size)
+        dataset_item = results["dataset_item"]
+        label_list = results["ann_info"]["label_list"]
+        ann_info = get_annotation_mmdet_format(
+            dataset_item, label_list, self.domain, self.min_size
+        )
         if self.with_bbox:
             results = self._load_bboxes(results, ann_info)
-            if results is None or len(results['gt_bboxes']) == 0:
+            if results is None or len(results["gt_bboxes"]) == 0:
                 return None
         if self.with_label:
             results = self._load_labels(results, ann_info)

@@ -20,31 +20,37 @@ from typing import Optional
 
 import torch
 from mmcv.runner import load_state_dict
-from ote_sdk.configuration import cfg_helper
-from ote_sdk.configuration.helper.utils import ids_to_strings
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.model import (
+from ote.api.configuration import cfg_helper
+from ote.api.configuration.helper.utils import ids_to_strings
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.model import (
     ModelEntity,
     ModelFormat,
     ModelOptimizationType,
     ModelPrecision,
     OptimizationMethod,
 )
-from ote_sdk.entities.optimization_parameters import default_progress_callback, OptimizationParameters
-from ote_sdk.entities.subset import Subset
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.serialization.label_mapper import label_schema_to_bytes
-from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType
-from ote_sdk.usecases.tasks.interfaces.optimization_interface import IOptimizationTask
-from ote_sdk.usecases.tasks.interfaces.optimization_interface import OptimizationType
-from ote_sdk.utils.argument_checks import (
+from ote.api.entities.optimization_parameters import (
+    default_progress_callback,
+    OptimizationParameters,
+)
+from ote.api.entities.subset import Subset
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.serialization.label_mapper import label_schema_to_bytes
+from ote.api.usecases.tasks.interfaces.export_interface import ExportType
+from ote.api.usecases.tasks.interfaces.optimization_interface import IOptimizationTask
+from ote.api.usecases.tasks.interfaces.optimization_interface import OptimizationType
+from ote.api.utils.argument_checks import (
     DatasetParamTypeCheck,
     check_input_parameters_type,
 )
 
 from mmdet.apis import train_detector
 from mmdet.apis.fake_input import get_fake_input
-from detection_tasks.apis.detection.config_utils import prepare_for_training, remove_from_config
+from detection_tasks.apis.detection.config_utils import (
+    prepare_for_training,
+    remove_from_config,
+)
 from detection_tasks.apis.detection.configuration import OTEDetectionConfig
 from detection_tasks.apis.detection.inference_task import OTEDetectionInferenceTask
 from detection_tasks.apis.detection.ote_utils import OptimizationProgressCallback
@@ -63,10 +69,9 @@ logger = get_root_logger()
 
 
 class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
-
     @check_input_parameters_type()
     def __init__(self, task_environment: TaskEnvironment):
-        """"
+        """ "
         Task for compressing object detection models using NNCF.
         """
         self._val_dataloader = None
@@ -81,7 +86,10 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
         pruning = self._hyperparams.nncf_optimization.enable_pruning
         if quantization and pruning:
             self._nncf_preset = "nncf_quantization_pruning"
-            self._optimization_methods = [OptimizationMethod.QUANTIZATION, OptimizationMethod.FILTER_PRUNING]
+            self._optimization_methods = [
+                OptimizationMethod.QUANTIZATION,
+                OptimizationMethod.FILTER_PRUNING,
+            ]
             self._precision = [ModelPrecision.INT8]
             return
         if quantization and not pruning:
@@ -94,7 +102,7 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
             self._optimization_methods = [OptimizationMethod.FILTER_PRUNING]
             self._precision = self._precision_from_config
             return
-        raise RuntimeError('Not selected optimization algorithm')
+        raise RuntimeError("Not selected optimization algorithm")
 
     def _load_model(self, model: ModelEntity):
         # NNCF parts
@@ -105,13 +113,20 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
 
         self._set_attributes_by_hyperparams()
 
-        optimization_config = compose_nncf_config(common_nncf_config, [self._nncf_preset])
+        optimization_config = compose_nncf_config(
+            common_nncf_config, [self._nncf_preset]
+        )
 
-        max_acc_drop = self._hyperparams.nncf_optimization.maximal_accuracy_degradation / 100
+        max_acc_drop = (
+            self._hyperparams.nncf_optimization.maximal_accuracy_degradation / 100
+        )
         if "accuracy_aware_training" in optimization_config["nncf_config"]:
             # Update maximal_absolute_accuracy_degradation
-            (optimization_config["nncf_config"]["accuracy_aware_training"]
-                                ["params"]["maximal_absolute_accuracy_degradation"]) = max_acc_drop
+            (
+                optimization_config["nncf_config"]["accuracy_aware_training"]["params"][
+                    "maximal_absolute_accuracy_degradation"
+                ]
+            ) = max_acc_drop
             # Force evaluation interval
             self._config.evaluation.interval = 1
         else:
@@ -123,14 +138,18 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
         if model is not None:
             # If a model has been trained and saved for the task already, create empty model and load weights here
             buffer = io.BytesIO(model.get_data("weights.pth"))
-            model_data = torch.load(buffer, map_location=torch.device('cpu'))
+            model_data = torch.load(buffer, map_location=torch.device("cpu"))
 
-            self.confidence_threshold = model_data.get('confidence_threshold',
-                self._hyperparams.postprocessing.confidence_threshold)
-            if model_data.get('anchors'):
-                anchors = model_data['anchors']
-                self._config.model.bbox_head.anchor_generator.heights = anchors['heights']
-                self._config.model.bbox_head.anchor_generator.widths = anchors['widths']
+            self.confidence_threshold = model_data.get(
+                "confidence_threshold",
+                self._hyperparams.postprocessing.confidence_threshold,
+            )
+            if model_data.get("anchors"):
+                anchors = model_data["anchors"]
+                self._config.model.bbox_head.anchor_generator.heights = anchors[
+                    "heights"
+                ]
+                self._config.model.bbox_head.anchor_generator.widths = anchors["widths"]
 
             model = self._create_model(self._config, from_scratch=True)
             try:
@@ -139,30 +158,36 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
                         model,
                         self._config,
                         init_state_dict=model_data,
-                        get_fake_input_func=get_fake_input
+                        get_fake_input_func=get_fake_input,
                     )
-                    logger.info("Loaded model weights from Task Environment and wrapped by NNCF")
+                    logger.info(
+                        "Loaded model weights from Task Environment and wrapped by NNCF"
+                    )
                 else:
                     try:
-                        load_state_dict(model, model_data['model'])
+                        load_state_dict(model, model_data["model"])
 
                         # It prevent model from being overwritten
-                        #if "load_from" in self._config:
+                        # if "load_from" in self._config:
                         #    self._config.load_from = None
 
                         logger.info(f"Loaded model weights from Task Environment")
                         logger.info(f"Model architecture: {self._model_name}")
                     except BaseException as ex:
-                        raise ValueError("Could not load the saved model. The model file structure is invalid.") \
-                            from ex
+                        raise ValueError(
+                            "Could not load the saved model. The model file structure is invalid."
+                        ) from ex
 
                 logger.info(f"Loaded model weights from Task Environment")
                 logger.info(f"Model architecture: {self._model_name}")
             except BaseException as ex:
-                raise ValueError("Could not load the saved model. The model file structure is invalid.") \
-                    from ex
+                raise ValueError(
+                    "Could not load the saved model. The model file structure is invalid."
+                ) from ex
         else:
-            raise ValueError(f"No trained model in project. NNCF require pretrained weights to compress the model")
+            raise ValueError(
+                f"No trained model in project. NNCF require pretrained weights to compress the model"
+            )
 
         self._compression_ctrl = compression_ctrl
         return model
@@ -174,8 +199,11 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
             config.data.workers_per_gpu,
             len(config.gpu_ids),
             dist=False,
-            seed=config.seed)
-        is_acc_aware_training_set = is_accuracy_aware_training_set(config.get("nncf_config"))
+            seed=config.seed,
+        )
+        is_acc_aware_training_set = is_accuracy_aware_training_set(
+            config.get("nncf_config")
+        )
 
         if is_acc_aware_training_set:
             self._val_dataloader = build_val_dataloader(config, False)
@@ -186,7 +214,8 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
             val_dataloader=self._val_dataloader,
             dataloader_for_init=init_dataloader,
             get_fake_input_func=get_fake_input,
-            is_accuracy_aware=is_acc_aware_training_set)
+            is_accuracy_aware=is_acc_aware_training_set,
+        )
 
     @check_input_parameters_type({"dataset": DatasetParamTypeCheck})
     def optimize(
@@ -209,11 +238,15 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
         else:
             update_progress_callback = default_progress_callback
 
-        time_monitor = OptimizationProgressCallback(update_progress_callback,
-                                                    loading_stage_progress_percentage=5,
-                                                    initialization_stage_progress_percentage=5)
+        time_monitor = OptimizationProgressCallback(
+            update_progress_callback,
+            loading_stage_progress_percentage=5,
+            initialization_stage_progress_percentage=5,
+        )
         learning_curves = defaultdict(OTELoggerHook.Curve)
-        training_config = prepare_for_training(config, train_dataset, val_dataset, time_monitor, learning_curves)
+        training_config = prepare_for_training(
+            config, train_dataset, val_dataset, time_monitor, learning_curves
+        )
         mm_train_dataset = build_dataset(training_config.data.train)
 
         if torch.cuda.is_available():
@@ -236,16 +269,18 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
             remove_from_config(training_config, "fp16")
             logger.warn("fp16 option is not supported in NNCF. Switch to fp32.")
 
-        train_detector(model=self._model,
-                       dataset=mm_train_dataset,
-                       cfg=training_config,
-                       validate=True,
-                       val_dataloader=self._val_dataloader,
-                       compression_ctrl=self._compression_ctrl)
+        train_detector(
+            model=self._model,
+            dataset=mm_train_dataset,
+            cfg=training_config,
+            validate=True,
+            val_dataloader=self._val_dataloader,
+            compression_ctrl=self._compression_ctrl,
+        )
 
         # Check for stop signal when training has stopped. If should_stop is true, training was cancelled
         if self._should_stop:
-            logger.info('Training cancelled.')
+            logger.info("Training cancelled.")
             self._should_stop = False
             self._is_training = False
             return
@@ -273,31 +308,45 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
     def save_model(self, output_model: ModelEntity):
         buffer = io.BytesIO()
         hyperparams = self._task_environment.get_hyper_parameters(OTEDetectionConfig)
-        hyperparams_str = ids_to_strings(cfg_helper.convert(hyperparams, dict, enum_to_str=True))
+        hyperparams_str = ids_to_strings(
+            cfg_helper.convert(hyperparams, dict, enum_to_str=True)
+        )
         labels = {label.name: label.color.rgb_tuple for label in self._labels}
         # WA for scheduler resetting in NNCF
         compression_state = self._compression_ctrl.get_compression_state()
-        for algo_state in compression_state.get('ctrl_state', {}).values():
-            if not algo_state.get('scheduler_state'):
-                algo_state['scheduler_state'] = {'current_step': 0, 'current_epoch': 0}
+        for algo_state in compression_state.get("ctrl_state", {}).values():
+            if not algo_state.get("scheduler_state"):
+                algo_state["scheduler_state"] = {"current_step": 0, "current_epoch": 0}
         modelinfo = {
-            'compression_state': compression_state,
-            'meta': {
-                'config': self._config,
-                'nncf_enable_compression': True,
+            "compression_state": compression_state,
+            "meta": {
+                "config": self._config,
+                "nncf_enable_compression": True,
             },
-            'model': self._model.state_dict(),
-            'config': hyperparams_str,
-            'labels': labels,
-            'confidence_threshold': self.confidence_threshold,
-            'VERSION': 1,
+            "model": self._model.state_dict(),
+            "config": hyperparams_str,
+            "labels": labels,
+            "confidence_threshold": self.confidence_threshold,
+            "VERSION": 1,
         }
 
-        if hasattr(self._config.model, 'bbox_head') and hasattr(self._config.model.bbox_head, 'anchor_generator'):
-            if getattr(self._config.model.bbox_head.anchor_generator, 'reclustering_anchors', False):
+        if hasattr(self._config.model, "bbox_head") and hasattr(
+            self._config.model.bbox_head, "anchor_generator"
+        ):
+            if getattr(
+                self._config.model.bbox_head.anchor_generator,
+                "reclustering_anchors",
+                False,
+            ):
                 generator = self._model.bbox_head.anchor_generator
-                modelinfo['anchors'] = {'heights': generator.heights, 'widths': generator.widths}
+                modelinfo["anchors"] = {
+                    "heights": generator.heights,
+                    "widths": generator.widths,
+                }
 
         torch.save(modelinfo, buffer)
         output_model.set_data("weights.pth", buffer.getvalue())
-        output_model.set_data("label_schema.json", label_schema_to_bytes(self._task_environment.label_schema))
+        output_model.set_data(
+            "label_schema.json",
+            label_schema_to_bytes(self._task_environment.label_schema),
+        )

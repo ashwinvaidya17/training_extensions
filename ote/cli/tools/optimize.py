@@ -19,15 +19,14 @@ Model optimization tool.
 import argparse
 import json
 
-from ote_sdk.configuration.helper import create
-from ote_sdk.entities.inference_parameters import InferenceParameters
-from ote_sdk.entities.model import ModelEntity
-from ote_sdk.entities.optimization_parameters import OptimizationParameters
-from ote_sdk.entities.resultset import ResultSetEntity
-from ote_sdk.entities.subset import Subset
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.usecases.tasks.interfaces.optimization_interface import OptimizationType
-
+from ote.api.configuration.helper import create
+from ote.api.entities.inference_parameters import InferenceParameters
+from ote.api.entities.model import ModelEntity
+from ote.api.entities.optimization_parameters import OptimizationParameters
+from ote.api.entities.resultset import ResultSetEntity
+from ote.api.entities.subset import Subset
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.usecases.tasks.interfaces.optimization_interface import OptimizationType
 from ote.cli.datasets import get_dataset_class
 from ote.cli.registry import find_and_parse_model_template
 from ote.cli.utils.config import override_parameters

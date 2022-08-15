@@ -22,8 +22,8 @@ from mmcv.runner.hooks import HOOKS, Hook, LoggerHook
 from mmcv.runner import BaseRunner, EpochBasedRunner
 from mmcv.runner.dist_utils import master_only
 
-from ote_sdk.utils.argument_checks import check_input_parameters_type
-from ote_sdk.usecases.reporting.time_monitor_callback import TimeMonitorCallback
+from ote.api.utils.argument_checks import check_input_parameters_type
+from ote.api.usecases.reporting.time_monitor_callback import TimeMonitorCallback
 
 
 logger = logging.getLogger(__name__)
@@ -46,12 +46,14 @@ class CancelTrainingHook(Hook):
     @staticmethod
     def _check_for_stop_signal(runner: BaseRunner):
         work_dir = runner.work_dir
-        stop_filepath = os.path.join(work_dir, '.stop_training')
+        stop_filepath = os.path.join(work_dir, ".stop_training")
         if os.path.exists(stop_filepath):
             if isinstance(runner, EpochBasedRunner):
                 epoch = runner.epoch
                 runner._max_epochs = epoch  # Force runner to stop by pretending it has reached it's max_epoch
-            runner.should_stop = True  # Set this flag to true to stop the current training epoch
+            runner.should_stop = (
+                True  # Set this flag to true to stop the current training epoch
+            )
             os.remove(stop_filepath)
 
     @check_input_parameters_type()
@@ -86,12 +88,11 @@ class EnsureCorrectBestCheckpointHook(Hook):
 
     @check_input_parameters_type()
     def after_run(self, runner: BaseRunner):
-        runner.call_hook('after_train_epoch')
+        runner.call_hook("after_train_epoch")
 
 
 @HOOKS.register_module()
 class OTELoggerHook(LoggerHook):
-
     class Curve:
         def __init__(self):
             self.x = []
@@ -100,16 +101,18 @@ class OTELoggerHook(LoggerHook):
         def __repr__(self):
             points = []
             for x, y in zip(self.x, self.y):
-                points.append(f'({x},{y})')
-            return 'curve[' + ','.join(points) + ']'
+                points.append(f"({x},{y})")
+            return "curve[" + ",".join(points) + "]"
 
     @check_input_parameters_type()
-    def __init__(self,
-                 curves: Optional[Dict[Any, Curve]] = None,
-                 interval: int = 10,
-                 ignore_last: bool = True,
-                 reset_flag: bool = True,
-                 by_epoch: bool = True):
+    def __init__(
+        self,
+        curves: Optional[Dict[Any, Curve]] = None,
+        interval: int = 10,
+        ignore_last: bool = True,
+        reset_flag: bool = True,
+        by_epoch: bool = True,
+    ):
         super().__init__(interval, ignore_last, reset_flag, by_epoch)
         self.curves = curves if curves is not None else defaultdict(self.Curve)
 
@@ -118,7 +121,9 @@ class OTELoggerHook(LoggerHook):
     def log(self, runner: BaseRunner):
         tags = self.get_loggable_tags(runner, allow_text=False)
         if runner.max_epochs is not None:
-            normalized_iter = self.get_iter(runner) / runner.max_iters * runner.max_epochs
+            normalized_iter = (
+                self.get_iter(runner) / runner.max_iters * runner.max_epochs
+            )
         else:
             normalized_iter = self.get_iter(runner)
         for tag, value in tags.items():
@@ -152,9 +157,15 @@ class OTEProgressHook(Hook):
     def before_run(self, runner: BaseRunner):
         total_epochs = runner.max_epochs if runner.max_epochs is not None else 1
         self.time_monitor.total_epochs = total_epochs
-        self.time_monitor.train_steps = runner.max_iters // total_epochs if total_epochs else 1
-        self.time_monitor.steps_per_epoch = self.time_monitor.train_steps + self.time_monitor.val_steps
-        self.time_monitor.total_steps = max(math.ceil(self.time_monitor.steps_per_epoch * total_epochs), 1)
+        self.time_monitor.train_steps = (
+            runner.max_iters // total_epochs if total_epochs else 1
+        )
+        self.time_monitor.steps_per_epoch = (
+            self.time_monitor.train_steps + self.time_monitor.val_steps
+        )
+        self.time_monitor.total_steps = max(
+            math.ceil(self.time_monitor.steps_per_epoch * total_epochs), 1
+        )
         self.time_monitor.current_step = 0
         self.time_monitor.current_epoch = 0
         self.time_monitor.on_train_begin()
@@ -166,7 +177,7 @@ class OTEProgressHook(Hook):
     @check_input_parameters_type()
     def after_epoch(self, runner: BaseRunner):
         # put some runner's training status to use on the other hooks
-        runner.log_buffer.output['current_iters'] = runner.iter
+        runner.log_buffer.output["current_iters"] = runner.iter
         self.time_monitor.on_epoch_end(runner.epoch, runner.log_buffer.output)
 
     @check_input_parameters_type()
@@ -176,12 +187,12 @@ class OTEProgressHook(Hook):
     @check_input_parameters_type()
     def after_iter(self, runner: BaseRunner):
         # put some runner's training status to use on the other hooks
-        runner.log_buffer.output['current_iters'] = runner.iter
+        runner.log_buffer.output["current_iters"] = runner.iter
         self.time_monitor.on_train_batch_end(1)
         if self.verbose:
             progress = self.progress
             if progress >= self.print_threshold:
-                logger.warning(f'training progress {progress:.0f}%')
+                logger.warning(f"training progress {progress:.0f}%")
                 self.print_threshold = (progress + 10) // 10 * 10
 
     @check_input_parameters_type()

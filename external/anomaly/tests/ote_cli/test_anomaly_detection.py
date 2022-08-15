@@ -36,7 +36,7 @@ from ote.cli.utils.tests import (
     pot_eval_testing,
     pot_optimize_testing,
 )
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_component
+from ote.api.test_suite.e2e_test_system import e2e_pytest_component
 
 from ote.cli.registry import Registry
 

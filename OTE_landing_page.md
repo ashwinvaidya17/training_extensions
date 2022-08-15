@@ -26,7 +26,7 @@ If the results are unsatisfactory, add datasets and perform the same steps, star
 
 ## OTE Components
 
-- [OTE SDK](https://github.com/openvinotoolkit/training_extensions/tree/master/ote_sdk)
+- [OTE SDK](https://github.com/openvinotoolkit/training_extensions/tree/master/ote/api)
 - [OTE CLI](https://github.com/openvinotoolkit/training_extensions/tree/master/ote/cli)
 - [OTE Algorithms](https://github.com/openvinotoolkit/training_extensions/tree/master/external)
 

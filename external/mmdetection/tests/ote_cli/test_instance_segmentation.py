@@ -18,7 +18,7 @@ import os
 
 import pytest
 
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_component
+from ote.api.test_suite.e2e_test_system import e2e_pytest_component
 
 from ote.cli.registry import Registry
 
@@ -40,31 +40,33 @@ from ote.cli.utils.tests import (
     ote_hpo_testing,
     nncf_eval_openvino_testing,
     pot_optimize_testing,
-    pot_eval_testing
+    pot_eval_testing,
 )
 
 
 args = {
-    '--train-ann-file': 'data/car_tree_bug/annotations/instances_default.json',
-    '--train-data-roots': 'data/car_tree_bug/images',
-    '--val-ann-file': 'data/car_tree_bug/annotations/instances_default.json',
-    '--val-data-roots': 'data/car_tree_bug/images',
-    '--test-ann-files': 'data/car_tree_bug/annotations/instances_default.json',
-    '--test-data-roots': 'data/car_tree_bug/images',
-    '--input': 'data/car_tree_bug/images',
-    'train_params': [
-        'params',
-        '--learning_parameters.num_iters',
-        '5',
-        '--learning_parameters.batch_size',
-        '2'
-    ]
+    "--train-ann-file": "data/car_tree_bug/annotations/instances_default.json",
+    "--train-data-roots": "data/car_tree_bug/images",
+    "--val-ann-file": "data/car_tree_bug/annotations/instances_default.json",
+    "--val-data-roots": "data/car_tree_bug/images",
+    "--test-ann-files": "data/car_tree_bug/annotations/instances_default.json",
+    "--test-data-roots": "data/car_tree_bug/images",
+    "--input": "data/car_tree_bug/images",
+    "train_params": [
+        "params",
+        "--learning_parameters.num_iters",
+        "5",
+        "--learning_parameters.batch_size",
+        "2",
+    ],
 }
 
-root = '/tmp/ote/cli/'
+root = "/tmp/ote/cli/"
 ote_dir = os.getcwd()
 
-templates = Registry('external/mmdetection').filter(task_type='INSTANCE_SEGMENTATION').templates
+templates = (
+    Registry("external/mmdetection").filter(task_type="INSTANCE_SEGMENTATION").templates
+)
 templates_ids = [template.model_template_id for template in templates]
 
 

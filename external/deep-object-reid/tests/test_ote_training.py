@@ -15,92 +15,108 @@
 import logging
 import os
 import os.path as osp
-from collections import (namedtuple,
-                        OrderedDict)
+from collections import OrderedDict, namedtuple
 from copy import deepcopy
 from pprint import pformat
 from typing import Any, Callable, Dict, List, Optional, Type
 
 import pytest
-from ote_sdk.entities.subset import Subset
-from ote_sdk.entities.model_template import parse_model_template
-from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType
-from ote_sdk.configuration.helper import create as ote_sdk_configuration_helper_create
-from ote_sdk.usecases.tasks.interfaces.optimization_interface import OptimizationType
-from ote_sdk.utils.importing import get_impl_class
-
-
-from torchreid_tasks.utils import (ClassificationDatasetAdapter,
-                                            generate_label_schema)
-
-from ote_sdk.test_suite.training_test_case import (OTETestCaseInterface,
-                                                   generate_ote_integration_test_case_class)
-from ote_sdk.test_suite.e2e_test_system import DataCollector, e2e_pytest_performance
-from ote_sdk.test_suite.training_tests_common import (make_path_be_abs,
-                                                      make_paths_be_abs,
-                                                      KEEP_CONFIG_FIELD_VALUE,
-                                                      REALLIFE_USECASE_CONSTANT,
-                                                      ROOT_PATH_KEY)
-from ote_sdk.test_suite.training_tests_helper import (OTETestHelper,
-                                                      DefaultOTETestCreationParametersInterface,
-                                                      OTETrainingTestInterface)
-from ote_sdk.test_suite.training_tests_actions import (OTETestTrainingAction,
-                                                       is_nncf_enabled,
-                                                       BaseOTETestAction,
-                                                       OTETestTrainingEvaluationAction,
-                                                       OTETestExportAction,
-                                                       OTETestExportEvaluationAction,
-                                                       OTETestPotAction,
-                                                       OTETestPotEvaluationAction,
-                                                       OTETestNNCFAction,
-                                                       OTETestNNCFEvaluationAction,
-                                                       OTETestNNCFExportAction,
-                                                       OTETestNNCFExportEvaluationAction,
-                                                       OTETestNNCFGraphAction,
-                                                       create_environment_and_task)
-
+from ote.api.configuration.helper import create as ote_api_configuration_helper_create
+from ote.api.entities.model import ModelEntity, ModelFormat, ModelOptimizationType
+from ote.api.entities.model_template import parse_model_template
+from ote.api.entities.subset import Subset
+from ote.api.test_suite.e2e_test_system import DataCollector, e2e_pytest_performance
+from ote.api.test_suite.training_test_case import (
+    OTETestCaseInterface,
+    generate_ote_integration_test_case_class,
+)
+from ote.api.test_suite.training_tests_actions import (
+    BaseOTETestAction,
+    OTETestExportAction,
+    OTETestExportEvaluationAction,
+    OTETestNNCFAction,
+    OTETestNNCFEvaluationAction,
+    OTETestNNCFExportAction,
+    OTETestNNCFExportEvaluationAction,
+    OTETestNNCFGraphAction,
+    OTETestPotAction,
+    OTETestPotEvaluationAction,
+    OTETestTrainingAction,
+    OTETestTrainingEvaluationAction,
+    create_environment_and_task,
+    is_nncf_enabled,
+)
+from ote.api.test_suite.training_tests_common import (
+    KEEP_CONFIG_FIELD_VALUE,
+    REALLIFE_USECASE_CONSTANT,
+    ROOT_PATH_KEY,
+    make_path_be_abs,
+    make_paths_be_abs,
+)
+from ote.api.test_suite.training_tests_helper import (
+    DefaultOTETestCreationParametersInterface,
+    OTETestHelper,
+    OTETrainingTestInterface,
+)
+from ote.api.usecases.tasks.interfaces.optimization_interface import OptimizationType
+from ote.api.utils.importing import get_impl_class
+from torchreid_tasks.utils import ClassificationDatasetAdapter, generate_label_schema
 
 logger = logging.getLogger(__name__)
 
-def DATASET_PARAMETERS_FIELDS() -> List[str]:
-    return deepcopy(['annotations_train',
-                     'images_train_dir',
-                     'annotations_val',
-                     'images_val_dir',
-                     'annotations_test',
-                     'images_test_dir',
-                     ])
 
-DatasetParameters = namedtuple('DatasetParameters', DATASET_PARAMETERS_FIELDS())
+def DATASET_PARAMETERS_FIELDS() -> List[str]:
+    return deepcopy(
+        [
+            "annotations_train",
+            "images_train_dir",
+            "annotations_val",
+            "images_val_dir",
+            "annotations_test",
+            "images_test_dir",
+        ]
+    )
+
+
+DatasetParameters = namedtuple("DatasetParameters", DATASET_PARAMETERS_FIELDS())
 
 
 def _get_dataset_params_from_dataset_definitions(dataset_definitions, dataset_name):
     if dataset_name not in dataset_definitions:
-        raise ValueError(f'dataset {dataset_name} is absent in dataset_definitions, '
-                         f'dataset_definitions.keys={list(dataset_definitions.keys())}')
+        raise ValueError(
+            f"dataset {dataset_name} is absent in dataset_definitions, "
+            f"dataset_definitions.keys={list(dataset_definitions.keys())}"
+        )
     cur_dataset_definition = dataset_definitions[dataset_name]
-    training_parameters_fields = {k: v for k, v in cur_dataset_definition.items()
-                                  if k in DATASET_PARAMETERS_FIELDS()}
+    training_parameters_fields = {
+        k: v
+        for k, v in cur_dataset_definition.items()
+        if k in DATASET_PARAMETERS_FIELDS()
+    }
     make_paths_be_abs(training_parameters_fields, dataset_definitions[ROOT_PATH_KEY])
 
-    assert set(DATASET_PARAMETERS_FIELDS()) == set(training_parameters_fields.keys()), \
-            f'ERROR: dataset definitions for name={dataset_name} does not contain all required fields'
-    assert all(training_parameters_fields.values()), \
-            f'ERROR: dataset definitions for name={dataset_name} contains empty values for some required fields'
+    assert set(DATASET_PARAMETERS_FIELDS()) == set(
+        training_parameters_fields.keys()
+    ), f"ERROR: dataset definitions for name={dataset_name} does not contain all required fields"
+    assert all(
+        training_parameters_fields.values()
+    ), f"ERROR: dataset definitions for name={dataset_name} contains empty values for some required fields"
 
     params = DatasetParameters(**training_parameters_fields)
     return params
 
+
 def _create_classification_dataset_and_labels_schema(dataset_params):
-    logger.debug(f'Using for train annotation file {dataset_params.annotations_train}')
-    logger.debug(f'Using for val annotation file {dataset_params.annotations_val}')
+    logger.debug(f"Using for train annotation file {dataset_params.annotations_train}")
+    logger.debug(f"Using for val annotation file {dataset_params.annotations_val}")
     dataset = ClassificationDatasetAdapter(
         train_data_root=osp.join(dataset_params.images_train_dir),
         train_ann_file=osp.join(dataset_params.annotations_train),
         val_data_root=osp.join(dataset_params.images_val_dir),
         val_ann_file=osp.join(dataset_params.annotations_val),
         test_data_root=osp.join(dataset_params.images_test_dir),
-        test_ann_file=osp.join(dataset_params.annotations_test))
+        test_ann_file=osp.join(dataset_params.annotations_test),
+    )
     labels_schema = generate_label_schema(dataset.get_labels(), dataset.is_multilabel())
     return dataset, labels_schema
 
@@ -117,8 +133,9 @@ def get_image_classification_test_action_classes() -> List[Type[BaseOTETestActio
         OTETestNNCFEvaluationAction,
         OTETestNNCFExportAction,
         OTETestNNCFExportEvaluationAction,
-        OTETestNNCFGraphAction
+        OTETestNNCFGraphAction,
     ]
+
 
 class ClassificationTrainingTestParameters(DefaultOTETestCreationParametersInterface):
     def test_case_class(self) -> Type[OTETestCaseInterface]:
@@ -128,24 +145,24 @@ class ClassificationTrainingTestParameters(DefaultOTETestCreationParametersInter
 
     def test_bunches(self) -> List[Dict[str, Any]]:
         test_bunches = [
-                dict(
-                    model_name=[
-                       'Custom_Image_Classification_EfficientNet-V2-S',
-                       'Custom_Image_Classification_MobileNet-V3-large-1x',
-                    ],
-                    dataset_name=['lg_chem_short','mlc_voc_short'],
-                    usecase='precommit',
-                ),
-                dict(
-                    model_name=[
-                       'Custom_Image_Classification_EfficientNet-V2-S',
-                       'Custom_Image_Classification_MobileNet-V3-large-1x',
-                    ],
-                    dataset_name=['lg_chem','cifar100','mlc_voc'],
-                    max_num_epochs=KEEP_CONFIG_FIELD_VALUE,
-                    batch_size=KEEP_CONFIG_FIELD_VALUE,
-                    usecase=REALLIFE_USECASE_CONSTANT,
-                ),
+            dict(
+                model_name=[
+                    "Custom_Image_Classification_EfficientNet-V2-S",
+                    "Custom_Image_Classification_MobileNet-V3-large-1x",
+                ],
+                dataset_name=["lg_chem_short", "mlc_voc_short"],
+                usecase="precommit",
+            ),
+            dict(
+                model_name=[
+                    "Custom_Image_Classification_EfficientNet-V2-S",
+                    "Custom_Image_Classification_MobileNet-V3-large-1x",
+                ],
+                dataset_name=["lg_chem", "cifar100", "mlc_voc"],
+                max_num_epochs=KEEP_CONFIG_FIELD_VALUE,
+                batch_size=KEEP_CONFIG_FIELD_VALUE,
+                usecase=REALLIFE_USECASE_CONSTANT,
+            ),
         ]
         return deepcopy(test_bunches)
 
@@ -187,12 +204,10 @@ def _get_dummy_compressed_model(task):
     from torchreid.integration.nncf.compression import wrap_nncf_model
 
     # Disable quantaizers initialization
-    for compression in task._cfg["nncf_config"]['compression']:
+    for compression in task._cfg["nncf_config"]["compression"]:
         if compression["algorithm"] == "quantization":
             compression["initializer"] = {
-                "batchnorm_adaptation": {
-                    "num_bn_adaptation_samples": 0
-                }
+                "batchnorm_adaptation": {"num_bn_adaptation_samples": 0}
             }
 
     _, compressed_model, _ = wrap_nncf_model(task._model, task._cfg)
@@ -200,7 +215,7 @@ def _get_dummy_compressed_model(task):
 
 
 # TODO: This function copies with minor change OTETestTrainingAction
-#             from ote_sdk.test_suite.
+#             from ote.api.test_suite.
 #             Try to avoid copying of code.
 class ClassificationTestTrainingAction(OTETestTrainingAction):
     _name = "training"
@@ -227,7 +242,7 @@ class ClassificationTestTrainingAction(OTETestTrainingAction):
         self.model_template = parse_model_template(self.template_path)
 
         logger.debug("Set hyperparameters")
-        params = ote_sdk_configuration_helper_create(
+        params = ote_api_configuration_helper_create(
             self.model_template.hyper_parameters.data
         )
         if self.num_training_iters != KEEP_CONFIG_FIELD_VALUE:
@@ -261,8 +276,7 @@ class ClassificationTestTrainingAction(OTETestTrainingAction):
 
         logger.debug("Train model")
         self.output_model = ModelEntity(
-            self.dataset,
-            self.environment.get_model_configuration()
+            self.dataset, self.environment.get_model_configuration()
         )
 
         self.copy_hyperparams = deepcopy(self.task._hyperparams)
@@ -299,9 +313,11 @@ class ClassificationTestNNCFAction(OTETestNNCFAction):
             self.environment_for_nncf.get_model_configuration(),
         )
         self.nncf_model.set_data("weights.pth", trained_model.get_data("weights.pth"))
-        
-        if 'aux_model_1.pth' in trained_model.model_adapters:
-            self.nncf_model.set_data("aux_model_1.pth", trained_model.get_data("aux_model_1.pth"))
+
+        if "aux_model_1.pth" in trained_model.model_adapters:
+            self.nncf_model.set_data(
+                "aux_model_1.pth", trained_model.get_data("aux_model_1.pth")
+            )
 
         self.environment_for_nncf.model = self.nncf_model
 
@@ -330,7 +346,8 @@ class TestOTEReallifeClassification(OTETrainingTestInterface):
     """
     The main class of running test in this file.
     """
-    PERFORMANCE_RESULTS = None # it is required for e2e system
+
+    PERFORMANCE_RESULTS = None  # it is required for e2e system
     helper = OTETestHelper(ClassificationTrainingTestParameters())
 
     @classmethod
@@ -342,77 +359,108 @@ class TestOTEReallifeClassification(OTETrainingTestInterface):
         return cls.helper.get_list_of_tests(usecase)
 
     @pytest.fixture
-    def params_factories_for_test_actions_fx(self, current_test_parameters_fx,
-                                             dataset_definitions_fx, template_paths_fx,
-                                             ote_current_reference_dir_fx) -> Dict[str,Callable[[], Dict]]:
-        logger.debug('params_factories_for_test_actions_fx: begin')
+    def params_factories_for_test_actions_fx(
+        self,
+        current_test_parameters_fx,
+        dataset_definitions_fx,
+        template_paths_fx,
+        ote_current_reference_dir_fx,
+    ) -> Dict[str, Callable[[], Dict]]:
+        logger.debug("params_factories_for_test_actions_fx: begin")
 
         test_parameters = deepcopy(current_test_parameters_fx)
         dataset_definitions = deepcopy(dataset_definitions_fx)
         template_paths = deepcopy(template_paths_fx)
+
         def _training_params_factory() -> Dict:
             if dataset_definitions is None:
                 pytest.skip('The parameter "--dataset-definitions" is not set')
 
-            model_name = test_parameters['model_name']
-            dataset_name = test_parameters['dataset_name']
-            max_num_epochs = test_parameters['max_num_epochs']
-            batch_size = test_parameters['batch_size']
+            model_name = test_parameters["model_name"]
+            dataset_name = test_parameters["dataset_name"]
+            max_num_epochs = test_parameters["max_num_epochs"]
+            batch_size = test_parameters["batch_size"]
 
-            dataset_params = _get_dataset_params_from_dataset_definitions(dataset_definitions, dataset_name)
+            dataset_params = _get_dataset_params_from_dataset_definitions(
+                dataset_definitions, dataset_name
+            )
 
             if model_name not in template_paths:
-                raise ValueError(f'Model {model_name} is absent in template_paths, '
-                                 f'template_paths.keys={list(template_paths.keys())}')
-            template_path = make_path_be_abs(template_paths[model_name], template_paths[ROOT_PATH_KEY])
+                raise ValueError(
+                    f"Model {model_name} is absent in template_paths, "
+                    f"template_paths.keys={list(template_paths.keys())}"
+                )
+            template_path = make_path_be_abs(
+                template_paths[model_name], template_paths[ROOT_PATH_KEY]
+            )
 
-            logger.debug('training params factory: Before creating dataset and labels_schema')
-            dataset, labels_schema = _create_classification_dataset_and_labels_schema(dataset_params)
-            logger.debug('training params factory: After creating dataset and labels_schema')
+            logger.debug(
+                "training params factory: Before creating dataset and labels_schema"
+            )
+            dataset, labels_schema = _create_classification_dataset_and_labels_schema(
+                dataset_params
+            )
+            logger.debug(
+                "training params factory: After creating dataset and labels_schema"
+            )
 
             return {
-                'dataset': dataset,
-                'labels_schema': labels_schema,
-                'template_path': template_path,
-                'max_num_epochs': max_num_epochs,
-                'batch_size': batch_size,
+                "dataset": dataset,
+                "labels_schema": labels_schema,
+                "template_path": template_path,
+                "max_num_epochs": max_num_epochs,
+                "batch_size": batch_size,
             }
 
         def _nncf_graph_params_factory() -> Dict:
             if dataset_definitions is None:
                 pytest.skip('The parameter "--dataset-definitions" is not set')
 
-            model_name = test_parameters['model_name']
-            dataset_name = test_parameters['dataset_name']
+            model_name = test_parameters["model_name"]
+            dataset_name = test_parameters["dataset_name"]
 
-            dataset_params = _get_dataset_params_from_dataset_definitions(dataset_definitions, dataset_name)
+            dataset_params = _get_dataset_params_from_dataset_definitions(
+                dataset_definitions, dataset_name
+            )
 
             if model_name not in template_paths:
-                raise ValueError(f'Model {model_name} is absent in template_paths, '
-                                 f'template_paths.keys={list(template_paths.keys())}')
-            template_path = make_path_be_abs(template_paths[model_name], template_paths[ROOT_PATH_KEY])
+                raise ValueError(
+                    f"Model {model_name} is absent in template_paths, "
+                    f"template_paths.keys={list(template_paths.keys())}"
+                )
+            template_path = make_path_be_abs(
+                template_paths[model_name], template_paths[ROOT_PATH_KEY]
+            )
 
-            logger.debug('training params factory: Before creating dataset and labels_schema')
-            dataset, labels_schema = _create_classification_dataset_and_labels_schema(dataset_params)
-            logger.debug('training params factory: After creating dataset and labels_schema')
+            logger.debug(
+                "training params factory: Before creating dataset and labels_schema"
+            )
+            dataset, labels_schema = _create_classification_dataset_and_labels_schema(
+                dataset_params
+            )
+            logger.debug(
+                "training params factory: After creating dataset and labels_schema"
+            )
 
             return {
-                'dataset': dataset,
-                'labels_schema': labels_schema,
-                'template_path': template_path,
-                'reference_dir': ote_current_reference_dir_fx,
-                'fn_get_compressed_model': _get_dummy_compressed_model
+                "dataset": dataset,
+                "labels_schema": labels_schema,
+                "template_path": template_path,
+                "reference_dir": ote_current_reference_dir_fx,
+                "fn_get_compressed_model": _get_dummy_compressed_model,
             }
 
         params_factories_for_test_actions = {
-            'training': _training_params_factory,
-            'nncf_graph': _nncf_graph_params_factory,
+            "training": _training_params_factory,
+            "nncf_graph": _nncf_graph_params_factory,
         }
-        logger.debug('params_factories_for_test_actions_fx: end')
+        logger.debug("params_factories_for_test_actions_fx: end")
         return params_factories_for_test_actions
 
     @pytest.fixture
-    def test_case_fx(self, current_test_parameters_fx, params_factories_for_test_actions_fx):
+    def test_case_fx(
+        self, current_test_parameters_fx, params_factories_for_test_actions_fx
+    ):
         """
         This fixture returns the test case class OTEIntegrationTestCase that should be used for the current test.
         Note that the cache from the test helper allows to store the instance of the class
@@ -424,49 +472,59 @@ class TestOTEReallifeClassification(OTETrainingTestInterface):
         If the main parameters used for this test differs w.r.t. the previous test, a new instance of
         test case class will be created.
         """
-        test_case = type(self).helper.get_test_case(current_test_parameters_fx,
-                                                    params_factories_for_test_actions_fx)
+        test_case = type(self).helper.get_test_case(
+            current_test_parameters_fx, params_factories_for_test_actions_fx
+        )
         return test_case
 
     # TODO(lbeynens): move to common fixtures
     @pytest.fixture
     def data_collector_fx(self, request) -> DataCollector:
         setup = deepcopy(request.node.callspec.params)
-        setup['environment_name'] = os.environ.get('TT_ENVIRONMENT_NAME', 'no-env')
-        setup['test_type'] = os.environ.get('TT_TEST_TYPE', 'no-test-type') # TODO: get from e2e test type
-        setup['scenario'] = 'api' # TODO(lbeynens): get from a fixture!
-        setup['test'] = request.node.name
-        setup['subject'] = 'deep-object-reid'
-        setup['project'] = 'ote'
-        if 'test_parameters' in setup:
-            assert isinstance(setup['test_parameters'], dict)
-            if 'dataset_name' not in setup:
-                setup['dataset_name'] = setup['test_parameters'].get('dataset_name')
-            if 'model_name' not in setup:
-                setup['model_name'] = setup['test_parameters'].get('model_name')
-            if 'test_stage' not in setup:
-                setup['test_stage'] = setup['test_parameters'].get('test_stage')
-            if 'usecase' not in setup:
-                setup['usecase'] = setup['test_parameters'].get('usecase')
-        logger.info(f'creating DataCollector: setup=\n{pformat(setup, width=140)}')
-        data_collector = DataCollector(name='TestOTEIntegration',
-                                       setup=setup)
+        setup["environment_name"] = os.environ.get("TT_ENVIRONMENT_NAME", "no-env")
+        setup["test_type"] = os.environ.get(
+            "TT_TEST_TYPE", "no-test-type"
+        )  # TODO: get from e2e test type
+        setup["scenario"] = "api"  # TODO(lbeynens): get from a fixture!
+        setup["test"] = request.node.name
+        setup["subject"] = "deep-object-reid"
+        setup["project"] = "ote"
+        if "test_parameters" in setup:
+            assert isinstance(setup["test_parameters"], dict)
+            if "dataset_name" not in setup:
+                setup["dataset_name"] = setup["test_parameters"].get("dataset_name")
+            if "model_name" not in setup:
+                setup["model_name"] = setup["test_parameters"].get("model_name")
+            if "test_stage" not in setup:
+                setup["test_stage"] = setup["test_parameters"].get("test_stage")
+            if "usecase" not in setup:
+                setup["usecase"] = setup["test_parameters"].get("usecase")
+        logger.info(f"creating DataCollector: setup=\n{pformat(setup, width=140)}")
+        data_collector = DataCollector(name="TestOTEIntegration", setup=setup)
         with data_collector:
-            logger.info('data_collector is created')
+            logger.info("data_collector is created")
             yield data_collector
-        logger.info('data_collector is released')
+        logger.info("data_collector is released")
 
     @e2e_pytest_performance
-    def test(self,
-             test_parameters,
-             test_case_fx, data_collector_fx,
-             cur_test_expected_metrics_callback_fx):
+    def test(
+        self,
+        test_parameters,
+        test_case_fx,
+        data_collector_fx,
+        cur_test_expected_metrics_callback_fx,
+    ):
 
         if "nncf_graph" in test_parameters["test_stage"]:
             pytest.xfail("The models has no a reference NNCF graph yet")
-        if "mlc_voc" in test_parameters["dataset_name"] \
-            and "MobileNet" in test_parameters["model_name"] \
-                and "nncf_evaluation" in test_parameters["test_stage"]:
+        if (
+            "mlc_voc" in test_parameters["dataset_name"]
+            and "MobileNet" in test_parameters["model_name"]
+            and "nncf_evaluation" in test_parameters["test_stage"]
+        ):
             pytest.xfail("Known issue CVS-83261")
-        test_case_fx.run_stage(test_parameters['test_stage'], data_collector_fx,
-                               cur_test_expected_metrics_callback_fx)
+        test_case_fx.run_stage(
+            test_parameters["test_stage"],
+            data_collector_fx,
+            cur_test_expected_metrics_callback_fx,
+        )

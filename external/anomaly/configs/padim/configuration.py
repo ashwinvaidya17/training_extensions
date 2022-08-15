@@ -18,7 +18,7 @@ Configurable parameters for Padim anomaly task
 
 from attr import attrs
 from configs.base import BaseAnomalyConfig
-from ote_sdk.configuration.elements import string_attribute
+from ote.api.configuration.elements import string_attribute
 
 
 @attrs

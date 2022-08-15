@@ -20,25 +20,27 @@ from collections import defaultdict
 from typing import Optional
 
 import torch
-from ote_sdk.configuration import cfg_helper
-from ote_sdk.configuration.helper.utils import ids_to_strings
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.model import (
+from ote.api.configuration import cfg_helper
+from ote.api.configuration.helper.utils import ids_to_strings
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.model import (
     ModelEntity,
     ModelFormat,
     ModelOptimizationType,
     OptimizationMethod,
     ModelPrecision,
 )
-from ote_sdk.entities.optimization_parameters import default_progress_callback
-from ote_sdk.entities.subset import Subset
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.serialization.label_mapper import label_schema_to_bytes
-from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType
-from ote_sdk.usecases.tasks.interfaces.optimization_interface import IOptimizationTask
-from ote_sdk.usecases.tasks.interfaces.optimization_interface import OptimizationParameters
-from ote_sdk.usecases.tasks.interfaces.optimization_interface import OptimizationType
-from ote_sdk.utils.argument_checks import (
+from ote.api.entities.optimization_parameters import default_progress_callback
+from ote.api.entities.subset import Subset
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.serialization.label_mapper import label_schema_to_bytes
+from ote.api.usecases.tasks.interfaces.export_interface import ExportType
+from ote.api.usecases.tasks.interfaces.optimization_interface import IOptimizationTask
+from ote.api.usecases.tasks.interfaces.optimization_interface import (
+    OptimizationParameters,
+)
+from ote.api.usecases.tasks.interfaces.optimization_interface import OptimizationType
+from ote.api.utils.argument_checks import (
     DatasetParamTypeCheck,
     check_input_parameters_type,
 )
@@ -63,7 +65,7 @@ logger = logging.getLogger(__name__)
 class OTESegmentationNNCFTask(OTESegmentationInferenceTask, IOptimizationTask):
     @check_input_parameters_type()
     def __init__(self, task_environment: TaskEnvironment):
-        """"
+        """ "
         Task for compressing object detection models using NNCF.
         """
         self._val_dataloader = None
@@ -78,7 +80,10 @@ class OTESegmentationNNCFTask(OTESegmentationInferenceTask, IOptimizationTask):
         pruning = self._hyperparams.nncf_optimization.enable_pruning
         if quantization and pruning:
             self._nncf_preset = "nncf_quantization_pruning"
-            self._optimization_methods = [OptimizationMethod.QUANTIZATION, OptimizationMethod.FILTER_PRUNING]
+            self._optimization_methods = [
+                OptimizationMethod.QUANTIZATION,
+                OptimizationMethod.FILTER_PRUNING,
+            ]
             self._precision = [ModelPrecision.INT8]
             return
         if quantization and not pruning:
@@ -91,7 +96,7 @@ class OTESegmentationNNCFTask(OTESegmentationInferenceTask, IOptimizationTask):
             self._optimization_methods = [OptimizationMethod.FILTER_PRUNING]
             self._precision = [ModelPrecision.FP32]
             return
-        raise RuntimeError('Not selected optimization algorithm')
+        raise RuntimeError("Not selected optimization algorithm")
 
     def _load_model(self, model: ModelEntity):
         # NNCF parts
@@ -102,13 +107,20 @@ class OTESegmentationNNCFTask(OTESegmentationInferenceTask, IOptimizationTask):
 
         self._set_attributes_by_hyperparams()
 
-        optimization_config = compose_nncf_config(common_nncf_config, [self._nncf_preset])
+        optimization_config = compose_nncf_config(
+            common_nncf_config, [self._nncf_preset]
+        )
 
-        max_acc_drop = self._hyperparams.nncf_optimization.maximal_accuracy_degradation / 100
+        max_acc_drop = (
+            self._hyperparams.nncf_optimization.maximal_accuracy_degradation / 100
+        )
         if "accuracy_aware_training" in optimization_config["nncf_config"]:
             # Update maximal_absolute_accuracy_degradation
-            (optimization_config["nncf_config"]["accuracy_aware_training"]
-                                ["params"]["maximal_absolute_accuracy_degradation"]) = max_acc_drop
+            (
+                optimization_config["nncf_config"]["accuracy_aware_training"]["params"][
+                    "maximal_absolute_accuracy_degradation"
+                ]
+            ) = max_acc_drop
             # Force evaluation interval
             self._config.evaluation.interval = 1
         else:
@@ -120,37 +132,40 @@ class OTESegmentationNNCFTask(OTESegmentationInferenceTask, IOptimizationTask):
         if model is not None:
             # If a model has been trained and saved for the task already, create empty model and load weights here
             buffer = io.BytesIO(model.get_data("weights.pth"))
-            model_data = torch.load(buffer, map_location=torch.device('cpu'))
+            model_data = torch.load(buffer, map_location=torch.device("cpu"))
 
             model = self._create_model(self._config, from_scratch=True)
             try:
                 if is_state_nncf(model_data):
                     compression_ctrl, model = wrap_nncf_model(
-                        model,
-                        self._config,
-                        init_state_dict=model_data
+                        model, self._config, init_state_dict=model_data
                     )
-                    logger.info("Loaded model weights from Task Environment and wrapped by NNCF")
+                    logger.info(
+                        "Loaded model weights from Task Environment and wrapped by NNCF"
+                    )
                 else:
                     try:
-                        model.load_state_dict(model_data['model'])
+                        model.load_state_dict(model_data["model"])
                         logger.info(f"Loaded model weights from Task Environment")
                         logger.info(f"Model architecture: {self._model_name}")
                     except BaseException as ex:
-                        raise ValueError("Could not load the saved model. The model file structure is invalid.") \
-                            from ex
+                        raise ValueError(
+                            "Could not load the saved model. The model file structure is invalid."
+                        ) from ex
 
                 logger.info(f"Loaded model weights from Task Environment")
                 logger.info(f"Model architecture: {self._model_name}")
             except BaseException as ex:
-                raise ValueError("Could not load the saved model. The model file structure is invalid.") \
-                    from ex
+                raise ValueError(
+                    "Could not load the saved model. The model file structure is invalid."
+                ) from ex
         else:
-            raise ValueError(f"No trained model in project. NNCF require pretrained weights to compress the model")
+            raise ValueError(
+                f"No trained model in project. NNCF require pretrained weights to compress the model"
+            )
 
         self._compression_ctrl = compression_ctrl
         return model
-
 
     def _create_compressed_model(self, dataset, config):
         init_dataloader = build_dataloader(
@@ -159,8 +174,11 @@ class OTESegmentationNNCFTask(OTESegmentationInferenceTask, IOptimizationTask):
             config.data.workers_per_gpu,
             len(config.gpu_ids),
             dist=False,
-            seed=config.seed)
-        is_acc_aware_training_set = is_accuracy_aware_training_set(config.get("nncf_config"))
+            seed=config.seed,
+        )
+        is_acc_aware_training_set = is_accuracy_aware_training_set(
+            config.get("nncf_config")
+        )
 
         if is_acc_aware_training_set:
             self._val_dataloader = build_val_dataloader(config, False)
@@ -170,7 +188,8 @@ class OTESegmentationNNCFTask(OTESegmentationInferenceTask, IOptimizationTask):
             config,
             val_dataloader=self._val_dataloader,
             dataloader_for_init=init_dataloader,
-            is_accuracy_aware=is_acc_aware_training_set)
+            is_accuracy_aware=is_acc_aware_training_set,
+        )
 
     @check_input_parameters_type({"dataset": DatasetParamTypeCheck})
     def optimize(
@@ -192,29 +211,35 @@ class OTESegmentationNNCFTask(OTESegmentationInferenceTask, IOptimizationTask):
         else:
             update_progress_callback = default_progress_callback
 
-        time_monitor = OptimizationProgressCallback(update_progress_callback,
-                                                    loading_stage_progress_percentage=5,
-                                                    initialization_stage_progress_percentage=5)
+        time_monitor = OptimizationProgressCallback(
+            update_progress_callback,
+            loading_stage_progress_percentage=5,
+            initialization_stage_progress_percentage=5,
+        )
         learning_curves = defaultdict(OTELoggerHook.Curve)
-        training_config = prepare_for_training(config, train_dataset, val_dataset, time_monitor, learning_curves)
+        training_config = prepare_for_training(
+            config, train_dataset, val_dataset, time_monitor, learning_curves
+        )
 
         self._training_work_dir = training_config.work_dir
         mm_train_dataset = build_dataset(training_config.data.train)
 
         # Initialize NNCF parts if start from not compressed model
         if not self._compression_ctrl:
-             self._create_compressed_model(mm_train_dataset, training_config)
+            self._create_compressed_model(mm_train_dataset, training_config)
 
         time_monitor.on_initialization_end()
 
         self._is_training = True
         self._model.train()
 
-        train_segmentor(model=self._model,
-                        dataset=mm_train_dataset,
-                        cfg=training_config,
-                        validate=True,
-                        compression_ctrl=self._compression_ctrl)
+        train_segmentor(
+            model=self._model,
+            dataset=mm_train_dataset,
+            cfg=training_config,
+            validate=True,
+            compression_ctrl=self._compression_ctrl,
+        )
 
         self.save_model(output_model)
 
@@ -239,20 +264,25 @@ class OTESegmentationNNCFTask(OTESegmentationInferenceTask, IOptimizationTask):
     def save_model(self, output_model: ModelEntity):
         buffer = io.BytesIO()
         hyperparams = self._task_environment.get_hyper_parameters(OTESegmentationConfig)
-        hyperparams_str = ids_to_strings(cfg_helper.convert(hyperparams, dict, enum_to_str=True))
+        hyperparams_str = ids_to_strings(
+            cfg_helper.convert(hyperparams, dict, enum_to_str=True)
+        )
         labels = {label.name: label.color.rgb_tuple for label in self._labels}
         modelinfo = {
-            'compression_state': self._compression_ctrl.get_compression_state(),
-            'meta': {
-                'config': self._config,
-                'nncf_enable_compression': True,
+            "compression_state": self._compression_ctrl.get_compression_state(),
+            "meta": {
+                "config": self._config,
+                "nncf_enable_compression": True,
             },
-            'model': self._model.state_dict(),
-            'config': hyperparams_str,
-            'labels': labels,
-            'VERSION': 1,
+            "model": self._model.state_dict(),
+            "config": hyperparams_str,
+            "labels": labels,
+            "VERSION": 1,
         }
 
         torch.save(modelinfo, buffer)
         output_model.set_data("weights.pth", buffer.getvalue())
-        output_model.set_data("label_schema.json", label_schema_to_bytes(self._task_environment.label_schema))
+        output_model.set_data(
+            "label_schema.json",
+            label_schema_to_bytes(self._task_environment.label_schema),
+        )

@@ -21,8 +21,8 @@ import numpy as np
 from openvino.model_zoo.model_api.models import SegmentationModel
 from openvino.model_zoo.model_api.models.types import NumericalValue
 from openvino.model_zoo.model_api.adapters.model_adapter import ModelAdapter
-from ote_sdk.utils.argument_checks import check_input_parameters_type
-from ote_sdk.utils.segmentation_utils import create_hard_prediction_from_soft_prediction
+from ote.api.utils.argument_checks import check_input_parameters_type
+from ote.api.utils.segmentation_utils import create_hard_prediction_from_soft_prediction
 
 
 @check_input_parameters_type()
@@ -36,19 +36,28 @@ def get_actmap(
 
 
 class BlurSegmentation(SegmentationModel):
-    __model__ = 'blur_segmentation'
+    __model__ = "blur_segmentation"
 
     @check_input_parameters_type()
-    def __init__(self, model_adapter: ModelAdapter, configuration: Optional[dict] = None, preload: bool = False):
+    def __init__(
+        self,
+        model_adapter: ModelAdapter,
+        configuration: Optional[dict] = None,
+        preload: bool = False,
+    ):
         super().__init__(model_adapter, configuration, preload)
 
     @classmethod
     def parameters(cls):
         parameters = super().parameters()
-        parameters.update({
-            'soft_threshold': NumericalValue(default_value=0.5, min=0.0, max=1.0),
-            'blur_strength': NumericalValue(value_type=int, default_value=1, min=0, max=25)
-        })
+        parameters.update(
+            {
+                "soft_threshold": NumericalValue(default_value=0.5, min=0.0, max=1.0),
+                "blur_strength": NumericalValue(
+                    value_type=int, default_value=1, min=0, max=25
+                ),
+            }
+        )
 
         return parameters
 
@@ -56,7 +65,7 @@ class BlurSegmentation(SegmentationModel):
         pass
 
     def _get_outputs(self):
-        layer_name = 'output'
+        layer_name = "output"
         layer_shape = self.outputs[layer_name].shape
 
         if len(layer_shape) == 3:
@@ -64,7 +73,11 @@ class BlurSegmentation(SegmentationModel):
         elif len(layer_shape) == 4:
             self.out_channels = layer_shape[1]
         else:
-            raise Exception("Unexpected output layer shape {}. Only 4D and 3D output layers are supported".format(layer_shape))
+            raise Exception(
+                "Unexpected output layer shape {}. Only 4D and 3D output layers are supported".format(
+                    layer_shape
+                )
+            )
 
         return layer_name
 
@@ -76,13 +89,21 @@ class BlurSegmentation(SegmentationModel):
         hard_prediction = create_hard_prediction_from_soft_prediction(
             soft_prediction=soft_prediction,
             soft_threshold=self.soft_threshold,
-            blur_strength=self.blur_strength
+            blur_strength=self.blur_strength,
         )
-        hard_prediction = cv2.resize(hard_prediction, metadata['original_shape'][1::-1], 0, 0, interpolation=cv2.INTER_NEAREST)
-        
-        if 'feature_vector' not in outputs or 'saliency_map' not in outputs:
-            warnings.warn('Could not find Feature Vector and Saliency Map in OpenVINO output. '
-                'Please rerun OpenVINO export or retrain the model.')
+        hard_prediction = cv2.resize(
+            hard_prediction,
+            metadata["original_shape"][1::-1],
+            0,
+            0,
+            interpolation=cv2.INTER_NEAREST,
+        )
+
+        if "feature_vector" not in outputs or "saliency_map" not in outputs:
+            warnings.warn(
+                "Could not find Feature Vector and Saliency Map in OpenVINO output. "
+                "Please rerun OpenVINO export or retrain the model."
+            )
             metadata["saliency_map"] = None
             metadata["feature_vector"] = None
         else:
@@ -90,6 +111,6 @@ class BlurSegmentation(SegmentationModel):
                 outputs["saliency_map"][0],
                 (metadata["original_shape"][1], metadata["original_shape"][0]),
             )
-            metadata["feature_vector"] = outputs["feature_vector"] 
+            metadata["feature_vector"] = outputs["feature_vector"]
 
         return hard_prediction

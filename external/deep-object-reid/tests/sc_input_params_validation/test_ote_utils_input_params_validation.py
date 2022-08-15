@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
-from ote_sdk.entities.label import LabelEntity, Domain
-from ote_sdk.entities.label_schema import LabelSchemaEntity
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_unit
-from ote_sdk.tests.parameters_validation.validation_helper import (
+from ote.api.entities.label import LabelEntity, Domain
+from ote.api.entities.label_schema import LabelSchemaEntity
+from ote.api.test_suite.e2e_test_system import e2e_pytest_unit
+from ote.api.tests.parameters_validation.validation_helper import (
     check_value_error_exception_raised,
 )
 from torchreid_tasks.utils import (
@@ -160,8 +160,7 @@ class TestOTEClassificationDatasetInputParamsValidation:
         """
         dataset, labels_list = load_test_dataset()
         ote_classification_dataset = OTEClassificationDataset(
-            ote_dataset=dataset,
-            labels=labels_list
+            ote_dataset=dataset, labels=labels_list
         )
         with pytest.raises(ValueError):
             ote_classification_dataset.__getitem__(idx="unexpected string")  # type: ignore
@@ -314,7 +313,7 @@ class TestUtilsFunctionsParamsValidation:
         """
         correct_values_dict = {
             "features": ["some", "features"],
-            "output_res": ("iterable", "object")
+            "output_res": ("iterable", "object"),
         }
         unexpected_values = [
             # Unexpected dictionary is specified as "features" parameter
@@ -393,7 +392,7 @@ class TestUtilsFunctionsParamsValidation:
         label = LabelEntity(name="test label", domain=Domain.DETECTION)
         correct_values_dict = {
             "logits": np.random.randint(low=0, high=255, size=(10, 16, 3)),
-            "labels": [label]
+            "labels": [label],
         }
         unexpected_str = "unexpected string"
         unexpected_values = [
@@ -429,7 +428,7 @@ class TestUtilsFunctionsParamsValidation:
         label = LabelEntity(name="test label", domain=Domain.DETECTION)
         correct_values_dict = {
             "logits": np.random.randint(low=0, high=255, size=(10, 16, 3)),
-            "labels": [label]
+            "labels": [label],
         }
         unexpected_str = "unexpected string"
         unexpected_values = [

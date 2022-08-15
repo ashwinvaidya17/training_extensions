@@ -27,23 +27,32 @@ import torch
 from mmcv.parallel import MMDataParallel
 from mmcv.runner import load_checkpoint, load_state_dict
 from mmcv.utils import Config
-from ote_sdk.utils.segmentation_utils import (create_hard_prediction_from_soft_prediction,
-                                              create_annotation_from_segmentation_map)
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.inference_parameters import InferenceParameters
-from ote_sdk.entities.inference_parameters import default_progress_callback as default_infer_progress_callback
-from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision
-from ote_sdk.entities.result_media import ResultMediaEntity
-from ote_sdk.entities.resultset import ResultSetEntity
-from ote_sdk.entities.task_environment import TaskEnvironment
-from ote_sdk.entities.tensor import TensorEntity
-from ote_sdk.serialization.label_mapper import label_schema_to_bytes
-from ote_sdk.usecases.evaluation.metrics_helper import MetricsHelper
-from ote_sdk.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
-from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType, IExportTask
-from ote_sdk.usecases.tasks.interfaces.inference_interface import IInferenceTask
-from ote_sdk.usecases.tasks.interfaces.unload_interface import IUnload
-from ote_sdk.utils.argument_checks import (
+from ote.api.utils.segmentation_utils import (
+    create_hard_prediction_from_soft_prediction,
+    create_annotation_from_segmentation_map,
+)
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.inference_parameters import InferenceParameters
+from ote.api.entities.inference_parameters import (
+    default_progress_callback as default_infer_progress_callback,
+)
+from ote.api.entities.model import (
+    ModelEntity,
+    ModelFormat,
+    ModelOptimizationType,
+    ModelPrecision,
+)
+from ote.api.entities.result_media import ResultMediaEntity
+from ote.api.entities.resultset import ResultSetEntity
+from ote.api.entities.task_environment import TaskEnvironment
+from ote.api.entities.tensor import TensorEntity
+from ote.api.serialization.label_mapper import label_schema_to_bytes
+from ote.api.usecases.evaluation.metrics_helper import MetricsHelper
+from ote.api.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
+from ote.api.usecases.tasks.interfaces.export_interface import ExportType, IExportTask
+from ote.api.usecases.tasks.interfaces.inference_interface import IInferenceTask
+from ote.api.usecases.tasks.interfaces.unload_interface import IUnload
+from ote.api.utils.argument_checks import (
     DatasetParamTypeCheck,
     check_input_parameters_type,
 )
@@ -53,19 +62,28 @@ from mmseg.core.hooks.auxiliary_hooks import FeatureVectorHook, SaliencyMapHook
 from mmseg.datasets import build_dataloader, build_dataset
 from mmseg.models import build_segmentor
 from mmseg.parallel import MMDataCPU
-from segmentation_tasks.apis.segmentation.config_utils import (patch_config, prepare_for_testing, set_hyperparams)
+from segmentation_tasks.apis.segmentation.config_utils import (
+    patch_config,
+    prepare_for_testing,
+    set_hyperparams,
+)
 from segmentation_tasks.apis.segmentation.configuration import OTESegmentationConfig
-from segmentation_tasks.apis.segmentation.ote_utils import InferenceProgressCallback, get_activation_map
+from segmentation_tasks.apis.segmentation.ote_utils import (
+    InferenceProgressCallback,
+    get_activation_map,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IUnload):
+class OTESegmentationInferenceTask(
+    IInferenceTask, IExportTask, IEvaluationTask, IUnload
+):
     task_environment: TaskEnvironment
 
     @check_input_parameters_type()
     def __init__(self, task_environment: TaskEnvironment):
-        """"
+        """ "
         Task for training semantic segmentation models using OTESegmentation.
 
         """
@@ -88,8 +106,13 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
         self._config = Config.fromfile(config_file_path)
 
         distributed = torch.distributed.is_initialized()
-        patch_config(self._config, self._scratch_space, self._labels,
-                     random_seed=42, distributed=distributed)
+        patch_config(
+            self._config,
+            self._scratch_space,
+            self._labels,
+            random_seed=42,
+            distributed=distributed,
+        )
         set_hyperparams(self._config, self._hyperparams)
 
         # Set default model attributes.
@@ -113,12 +136,12 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
         if model is not None:
             # If a model has been trained and saved for the task already, create empty model and load weights here
             buffer = io.BytesIO(model.get_data("weights.pth"))
-            model_data = torch.load(buffer, map_location=torch.device('cpu'))
+            model_data = torch.load(buffer, map_location=torch.device("cpu"))
 
             model = self._create_model(self._config, from_scratch=True)
 
             try:
-                load_state_dict(model, model_data['model'])
+                load_state_dict(model, model_data["model"])
 
                 # It prevent model from being overwritten
                 if "load_from" in self._config:
@@ -127,14 +150,17 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
                 logger.info(f"Loaded model weights from Task Environment")
                 logger.info(f"Model architecture: {self._model_name}")
             except BaseException as ex:
-                raise ValueError("Could not load the saved model. The model file structure is invalid.") \
-                    from ex
+                raise ValueError(
+                    "Could not load the saved model. The model file structure is invalid."
+                ) from ex
         else:
             # If there is no trained model yet, create model with pretrained weights as defined in the model config
             # file.
             model = self._create_model(self._config, from_scratch=False)
-            logger.info(f"No trained model in project yet. Created new model with '{self._model_name}' "
-                        f"architecture and general-purpose pretrained weights.")
+            logger.info(
+                f"No trained model in project yet. Created new model with '{self._model_name}' "
+                f"architecture and general-purpose pretrained weights."
+            )
         return model
 
     @staticmethod
@@ -150,33 +176,38 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
 
         model_cfg = copy.deepcopy(config.model)
 
-        init_from = None if from_scratch else config.get('load_from', None)
+        init_from = None if from_scratch else config.get("load_from", None)
         logger.warning(f"Init from: {init_from}")
 
         if init_from is not None:
             # No need to initialize backbone separately, if all weights are provided.
             model_cfg.pretrained = None
-            logger.warning('build segmentor')
+            logger.warning("build segmentor")
             model = build_segmentor(model_cfg)
 
             # Load all weights.
-            logger.warning('load checkpoint')
-            load_checkpoint(model, init_from, map_location='cpu', strict=False)
+            logger.warning("load checkpoint")
+            load_checkpoint(model, init_from, map_location="cpu", strict=False)
         else:
-            logger.warning('build segmentor')
+            logger.warning("build segmentor")
             model = build_segmentor(model_cfg)
 
         return model
 
     @check_input_parameters_type({"dataset": DatasetParamTypeCheck})
-    def infer(self, dataset: DatasetEntity,
-              inference_parameters: Optional[InferenceParameters] = None) -> DatasetEntity:
-        """ Analyzes a dataset using the latest inference model. """
+    def infer(
+        self,
+        dataset: DatasetEntity,
+        inference_parameters: Optional[InferenceParameters] = None,
+    ) -> DatasetEntity:
+        """Analyzes a dataset using the latest inference model."""
 
         set_hyperparams(self._config, self._hyperparams)
 
         # There is no need to have many workers for a couple of images.
-        self._config.data.workers_per_gpu = max(min(self._config.data.workers_per_gpu, len(dataset) - 1), 0)
+        self._config.data.workers_per_gpu = max(
+            min(self._config.data.workers_per_gpu, len(dataset) - 1), 0
+        )
 
         if inference_parameters is not None:
             update_progress_callback = inference_parameters.update_progress
@@ -196,8 +227,13 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
         pre_hook_handle = self._model.register_forward_pre_hook(pre_hook)
         hook_handle = self._model.register_forward_hook(hook)
 
-        prediction_results = self._infer_segmentor(self._model, self._config, dataset, dump_features=True,
-                                                   dump_saliency_map=not is_evaluation)
+        prediction_results = self._infer_segmentor(
+            self._model,
+            self._config,
+            dataset,
+            dump_features=True,
+            dump_saliency_map=not is_evaluation,
+        )
         self._add_predictions_to_dataset(prediction_results, dataset)
         pre_hook_handle.remove()
         hook_handle.remove()
@@ -205,7 +241,9 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
         return dataset
 
     def _add_predictions_to_dataset(self, prediction_results, dataset):
-        for dataset_item, (prediction, feature_vector, saliency_map) in zip(dataset, prediction_results):
+        for dataset_item, (prediction, feature_vector, saliency_map) in zip(
+            dataset, prediction_results
+        ):
             soft_prediction = np.transpose(prediction, axes=(1, 2, 0))
             hard_prediction = create_hard_prediction_from_soft_prediction(
                 soft_prediction=soft_prediction,
@@ -220,35 +258,54 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
             dataset_item.append_annotations(annotations=annotations)
 
             if feature_vector is not None:
-                active_score = TensorEntity(name="representation_vector", numpy=feature_vector.reshape(-1))
-                dataset_item.append_metadata_item(active_score, model=self._task_environment.model)
+                active_score = TensorEntity(
+                    name="representation_vector", numpy=feature_vector.reshape(-1)
+                )
+                dataset_item.append_metadata_item(
+                    active_score, model=self._task_environment.model
+                )
 
             if saliency_map is not None:
-                class_act_map = get_activation_map(saliency_map, (dataset_item.width, dataset_item.height))
-                result_media = ResultMediaEntity(name="saliency_map",
-                                                 type="Saliency map",
-                                                 annotation_scene=dataset_item.annotation_scene,
-                                                 roi=dataset_item.roi,
-                                                 numpy=class_act_map)
-                dataset_item.append_metadata_item(result_media, model=self._task_environment.model)
+                class_act_map = get_activation_map(
+                    saliency_map, (dataset_item.width, dataset_item.height)
+                )
+                result_media = ResultMediaEntity(
+                    name="saliency_map",
+                    type="Saliency map",
+                    annotation_scene=dataset_item.annotation_scene,
+                    roi=dataset_item.roi,
+                    numpy=class_act_map,
+                )
+                dataset_item.append_metadata_item(
+                    result_media, model=self._task_environment.model
+                )
 
-    def _infer_segmentor(self,
-                         model: torch.nn.Module, config: Config, dataset: DatasetEntity,
-                         dump_features: bool = False, dump_saliency_map: bool = False) -> None:
+    def _infer_segmentor(
+        self,
+        model: torch.nn.Module,
+        config: Config,
+        dataset: DatasetEntity,
+        dump_features: bool = False,
+        dump_saliency_map: bool = False,
+    ) -> None:
         model.eval()
 
         test_config = prepare_for_testing(config, dataset)
         mm_val_dataset = build_dataset(test_config.data.test)
 
         batch_size = 1
-        mm_val_dataloader = build_dataloader(mm_val_dataset,
-                                             samples_per_gpu=batch_size,
-                                             workers_per_gpu=test_config.data.workers_per_gpu,
-                                             num_gpus=1,
-                                             dist=False,
-                                             shuffle=False)
+        mm_val_dataloader = build_dataloader(
+            mm_val_dataset,
+            samples_per_gpu=batch_size,
+            workers_per_gpu=test_config.data.workers_per_gpu,
+            num_gpus=1,
+            dist=False,
+            shuffle=False,
+        )
         if torch.cuda.is_available():
-            model = MMDataParallel(model.cuda(test_config.gpu_ids[0]), device_ids=test_config.gpu_ids)
+            model = MMDataParallel(
+                model.cuda(test_config.gpu_ids[0]), device_ids=test_config.gpu_ids
+            )
         else:
             model = MMDataCPU(model)
 
@@ -257,28 +314,39 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
         saliency_maps = []
 
         # Use a single gpu for testing. Set in both mm_val_dataloader and eval_model
-        with FeatureVectorHook(model.module.backbone) if dump_features else nullcontext() as fhook:
-            with SaliencyMapHook(model.module.backbone) if dump_saliency_map else nullcontext() as shook:
+        with FeatureVectorHook(
+            model.module.backbone
+        ) if dump_features else nullcontext() as fhook:
+            with SaliencyMapHook(
+                model.module.backbone
+            ) if dump_saliency_map else nullcontext() as shook:
                 for data in mm_val_dataloader:
                     with torch.no_grad():
                         result = model(return_loss=False, output_logits=True, **data)
                     eval_predictions.extend(result)
-                feature_vectors = fhook.records if dump_features else [None] * len(dataset)
-                saliency_maps = shook.records if dump_saliency_map else [None] * len(dataset)
-        assert len(eval_predictions) == len(feature_vectors) == len(saliency_maps), \
-               'Number of elements should be the same, however, number of outputs are ' \
-               f"{len(eval_predictions)}, {len(feature_vectors)}, and {len(saliency_maps)}"
+                feature_vectors = (
+                    fhook.records if dump_features else [None] * len(dataset)
+                )
+                saliency_maps = (
+                    shook.records if dump_saliency_map else [None] * len(dataset)
+                )
+        assert len(eval_predictions) == len(feature_vectors) == len(saliency_maps), (
+            "Number of elements should be the same, however, number of outputs are "
+            f"{len(eval_predictions)}, {len(feature_vectors)}, and {len(saliency_maps)}"
+        )
         predictions = zip(eval_predictions, feature_vectors, saliency_maps)
         return predictions
 
     @check_input_parameters_type()
-    def evaluate(self, output_result_set: ResultSetEntity, evaluation_metric: Optional[str] = None):
-        """ Computes performance on a resultset """
+    def evaluate(
+        self,
+        output_result_set: ResultSetEntity,
+        evaluation_metric: Optional[str] = None,
+    ):
+        """Computes performance on a resultset"""
 
-        logger.info('Computing mDice')
-        metrics = MetricsHelper.compute_dice_averaged_over_pixels(
-            output_result_set
-        )
+        logger.info("Computing mDice")
+        metrics = MetricsHelper.compute_dice_averaged_over_pixels(output_result_set)
         logger.info(f"mDice after evaluation: {metrics.overall_dice.value}")
 
         output_result_set.performance = metrics.get_performance()
@@ -290,12 +358,12 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
 
         :return bool: True if task runs in docker
         """
-        path = '/proc/self/cgroup'
+        path = "/proc/self/cgroup"
         is_in_docker = False
         if os.path.isfile(path):
             with open(path) as f:
-                is_in_docker = is_in_docker or any('docker' in line for line in f)
-        is_in_docker = is_in_docker or os.path.exists('/.dockerenv')
+                is_in_docker = is_in_docker or any("docker" in line for line in f)
+        is_in_docker = is_in_docker or os.path.exists("/.dockerenv")
         return is_in_docker
 
     def unload(self):
@@ -306,14 +374,21 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
         self._delete_scratch_space()
 
         if self._is_docker():
-            logger.warning("Got unload request. Unloading models. Throwing Segmentation Fault on purpose")
+            logger.warning(
+                "Got unload request. Unloading models. Throwing Segmentation Fault on purpose"
+            )
             import ctypes
+
             ctypes.string_at(0)
         else:
-            logger.warning("Got unload request, but not on Docker. Only clearing CUDA cache")
+            logger.warning(
+                "Got unload request, but not on Docker. Only clearing CUDA cache"
+            )
             torch.cuda.empty_cache()
-            logger.warning(f"Done unloading. "
-                           f"Torch is still occupying {torch.cuda.memory_allocated()} bytes of GPU memory")
+            logger.warning(
+                f"Done unloading. "
+                f"Torch is still occupying {torch.cuda.memory_allocated()} bytes of GPU memory"
+            )
 
     @check_input_parameters_type()
     def export(self, export_type: ExportType, output_model: ModelEntity):
@@ -324,11 +399,14 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
 
         with tempfile.TemporaryDirectory() as tempdir:
             optimized_model_dir = os.path.join(tempdir, "export")
-            logger.info(f'Optimized model will be temporarily saved to "{optimized_model_dir}"')
+            logger.info(
+                f'Optimized model will be temporarily saved to "{optimized_model_dir}"'
+            )
             os.makedirs(optimized_model_dir, exist_ok=True)
 
             try:
                 from torch.jit._trace import TracerWarning
+
                 warnings.filterwarnings("ignore", category=TracerWarning)
 
                 if torch.cuda.is_available():
@@ -336,15 +414,17 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
                 else:
                     model = self._model.cpu()
 
-                export_model(model,
-                             self._config,
-                             tempdir,
-                             target='openvino',
-                             output_logits=True,
-                             input_format='bgr')  # ote expects RGB but mmseg uses BGR, so invert it
+                export_model(
+                    model,
+                    self._config,
+                    tempdir,
+                    target="openvino",
+                    output_logits=True,
+                    input_format="bgr",
+                )  # ote expects RGB but mmseg uses BGR, so invert it
 
-                bin_file = [f for f in os.listdir(tempdir) if f.endswith('.bin')][0]
-                xml_file = [f for f in os.listdir(tempdir) if f.endswith('.xml')][0]
+                bin_file = [f for f in os.listdir(tempdir) if f.endswith(".bin")][0]
+                xml_file = [f for f in os.listdir(tempdir) if f.endswith(".xml")][0]
                 with open(os.path.join(tempdir, bin_file), "rb") as f:
                     output_model.set_data("openvino.bin", f.read())
                 with open(os.path.join(tempdir, xml_file), "rb") as f:
@@ -354,7 +434,10 @@ class OTESegmentationInferenceTask(IInferenceTask, IExportTask, IEvaluationTask,
             except Exception as ex:
                 raise RuntimeError("Optimization was unsuccessful.") from ex
 
-        output_model.set_data("label_schema.json", label_schema_to_bytes(self._task_environment.label_schema))
+        output_model.set_data(
+            "label_schema.json",
+            label_schema_to_bytes(self._task_environment.label_schema),
+        )
 
     def _delete_scratch_space(self):
         """

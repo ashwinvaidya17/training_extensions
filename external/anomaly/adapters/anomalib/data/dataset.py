@@ -20,20 +20,20 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 from bson import ObjectId
-from ote_sdk.entities.annotation import (
+from ote.api.entities.annotation import (
     Annotation,
     AnnotationSceneEntity,
     AnnotationSceneKind,
 )
-from ote_sdk.entities.dataset_item import DatasetItemEntity
-from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.id import ID
-from ote_sdk.entities.image import Image
-from ote_sdk.entities.label import Domain, LabelEntity
-from ote_sdk.entities.scored_label import ScoredLabel
-from ote_sdk.entities.shapes.polygon import Point, Polygon
-from ote_sdk.entities.shapes.rectangle import Rectangle
-from ote_sdk.entities.subset import Subset
+from ote.api.entities.dataset_item import DatasetItemEntity
+from ote.api.entities.datasets import DatasetEntity
+from ote.api.entities.id import ID
+from ote.api.entities.image import Image
+from ote.api.entities.label import Domain, LabelEntity
+from ote.api.entities.scored_label import ScoredLabel
+from ote.api.entities.shapes.polygon import Point, Polygon
+from ote.api.entities.shapes.rectangle import Rectangle
+from ote.api.entities.subset import Subset
 
 
 class BaseAnomalyDataset(DatasetEntity, ABC):
