@@ -73,7 +73,7 @@ def get_required_packages(requirement_files: List[str]) -> List[str]:
     return required_packages
 
 
-REQUIRED_PACKAGES = get_required_packages(requirement_files=["cli"])
+REQUIRED_PACKAGES = get_required_packages(requirement_files=["api", "cli"])
 
 setup(
     name="ote",
