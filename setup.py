@@ -73,16 +73,20 @@ def get_required_packages(requirement_files: List[str]) -> List[str]:
     return required_packages
 
 
-REQUIRED_PACKAGES = get_required_packages(requirement_files=["api", "cli"])
+REQUIRED_PACKAGES = get_required_packages(requirement_files=["api", "cli", "dev", "openvino"])
+EXTRAS_REQUIRE = {
+    "anomaly": get_required_packages(requirement_files=["anomaly"]),
+}
 
 setup(
     name="ote",
     version="0.2",
     packages=find_packages(exclude=("tests",)),
     install_requires=REQUIRED_PACKAGES,
+    extras_require=EXTRAS_REQUIRE,
     entry_points={
         "console_scripts": [
-            "ote=ote.cli.tools.ote:main",
+            "ote=ote.cli.tools.cli:main",
             "ote_demo=ote.cli.tools.demo:main",
             "ote_eval=ote.cli.tools.eval:main",
             "ote_export=ote.cli.tools.export:main",
