@@ -73,7 +73,7 @@ def get_required_packages(requirement_files: List[str]) -> List[str]:
     return required_packages
 
 
-REQUIRED_PACKAGES = get_required_packages(requirement_files=["api", "cli", "dev", "openvino"])
+REQUIRED_PACKAGES = get_required_packages(requirement_files=["base", "dev", "openvino"])
 EXTRAS_REQUIRE = {
     "anomaly": get_required_packages(requirement_files=["anomaly"]),
 }
