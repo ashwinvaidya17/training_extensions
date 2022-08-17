@@ -4,22 +4,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-import sys
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from typing import List
 
 from setuptools import find_packages, setup
 
-
-def check_python_version():
-    python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-    supported_python_versions = ("3.8", "3.9")
-
-    if python_version not in supported_python_versions:
-        raise ValueError(
-            "Python version {python_version} is not supported. Supported python versions are: {supported_python_versions}"
-        )
 
 def load_module(name: str = "ote/__init__.py"):
     """Load Python Module.
