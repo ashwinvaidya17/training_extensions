@@ -328,9 +328,6 @@ class OpenVINOTask(IInferenceTask, IEvaluationTask, IOptimizationTask, IDeployme
         output_model.optimization_methods = [OptimizationMethod.QUANTIZATION]
         output_model.precision = [ModelPrecision.INT8]
 
-        self.task_environment.model = output_model
-        self.inferencer = self.load_inferencer()
-
         if optimization_parameters is not None:
             optimization_parameters.update_progress(100, None)
         logger.info("PTQ optimization completed")
