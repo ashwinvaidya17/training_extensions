@@ -22,7 +22,6 @@ from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint, Ri
 from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
 from lightning.pytorch.plugins.precision import MixedPrecision
 
-from otx.backend.native.callbacks.adaptive_train_scheduling import AdaptiveTrainScheduling
 from otx.backend.native.callbacks.gpu_mem_monitor import GPUMemMonitor
 from otx.backend.native.callbacks.iteration_timer import IterationTimer
 from otx.backend.native.models.base import DataInputParams, OTXModel
@@ -1020,8 +1019,15 @@ class OTXEngine(Engine):
 
     def configure_callbacks(self) -> None:
         """Sets up the OTX callbacks for the trainer."""
+        default_callbacks = self.model.configure_default_callbacks()
+
         callbacks: list[Callback] = []
         config_callbacks = self._cache.args.get("callbacks", [])
+
+        for callback in default_callbacks:
+            if callback not in config_callbacks:
+                callbacks.append(callback)
+
         has_callback: Callable[[Callback], bool] = lambda callback: any(
             isinstance(c, callback) for c in config_callbacks
         )
@@ -1044,15 +1050,15 @@ class OTXEngine(Engine):
                     auto_insert_metric_name=False,
                 ),
             )
-        if not has_callback(AdaptiveTrainScheduling):
-            callbacks.append(
-                AdaptiveTrainScheduling(
-                    max_interval=5,
-                    decay=-0.025,
-                    min_earlystop_patience=5,
-                    min_lrschedule_patience=3,
-                ),
-            )
+        # if not has_callback(AdaptiveTrainScheduling):
+        #     callbacks.append(
+        #         AdaptiveTrainScheduling(
+        #             max_interval=5,
+        #             decay=-0.025,
+        #             min_earlystop_patience=5,
+        #             min_lrschedule_patience=3,
+        #         ),
+        #     )
         if not has_callback(GPUMemMonitor):
             callbacks.append(GPUMemMonitor())
 

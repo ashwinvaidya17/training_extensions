@@ -78,5 +78,6 @@ class EarlyStoppingWithWarmup(EarlyStopping):
         self.warmup_epochs = warmup_epochs
 
     def _should_skip_check(self, trainer: pl.Trainer) -> bool:
+        breakpoint()
         warmup_threshold = max(self.warmup_epochs * trainer.num_training_batches, self.warmup_iters)
         return super()._should_skip_check(trainer) or trainer.global_step < warmup_threshold
