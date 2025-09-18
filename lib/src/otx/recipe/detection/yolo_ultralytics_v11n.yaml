@@ -1,0 +1,68 @@
+task: ULTRALYTICS_DETECTION
+model:
+  class_path: ultralytics.YOLO
+  init_args:
+    model: yolo11n
+
+callback_monitor: val/map_50
+
+data: ../_base_/data/detection.yaml
+
+overrides:
+  data:
+    input_size:
+      - 640
+      - 640
+    train_subset:
+      batch_size: 8
+      transforms:
+        - class_path: otx.data.transform_libs.torchvision.Resize
+          init_args:
+            scale: $(input_size)
+            keep_ratio: false
+            pad_to_square: true
+            transform_bbox: true
+        - class_path: torchvision.transforms.v2.ToDtype
+          init_args:
+            dtype: ${as_torch_dtype:torch.float32}
+        - class_path: torchvision.transforms.v2.Normalize
+          init_args:
+            mean: [0.0, 0.0, 0.0]
+            std: [255.0, 255.0, 255.0]
+      sampler:
+        class_path: otx.data.samplers.balanced_sampler.BalancedSampler
+
+    val_subset:
+      batch_size: 8
+      to_tv_image: true
+      transforms:
+        - class_path: otx.data.transform_libs.torchvision.Resize
+          init_args:
+            scale: $(input_size)
+            keep_ratio: false
+            pad_to_square: true
+            transform_bbox: true
+        - class_path: torchvision.transforms.v2.ToDtype
+          init_args:
+            dtype: ${as_torch_dtype:torch.float32}
+        - class_path: torchvision.transforms.v2.Normalize
+          init_args:
+            mean: [0.0, 0.0, 0.0]
+            std: [255.0, 255.0, 255.0]
+    test_subset:
+      batch_size: 8
+      to_tv_image: true
+      transforms:
+        - class_path: otx.data.transform_libs.torchvision.Resize
+          init_args:
+            scale: $(input_size)
+            keep_ratio: false
+            pad_to_square: true
+            transform_bbox: true
+        - class_path: torchvision.transforms.v2.ToDtype
+          init_args:
+            dtype: ${as_torch_dtype:torch.float32}
+        - class_path: torchvision.transforms.v2.Normalize
+          init_args:
+            mean: [0.0, 0.0, 0.0]
+            std: [255.0, 255.0, 255.0]

@@ -150,11 +150,13 @@ class OTXCLI:
             skip=engine_skip,
         )
         # Model Settings
+        from ultralytics import YOLO
+
         from otx.backend.native.models.base import OTXModel
         from otx.backend.openvino.models import OVModel
 
         parser.add_subclass_arguments(
-            (OTXModel, OVModel),
+            (OTXModel, OVModel, YOLO),
             "model",
             required=False,
             fail_untyped=False,

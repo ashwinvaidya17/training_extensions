@@ -36,6 +36,7 @@ TASK_ANNO_TYPE = {
     OTXTaskType.INSTANCE_SEGMENTATION: Polygon,
     OTXTaskType.SEMANTIC_SEGMENTATION: Polygon,
     OTXTaskType.DETECTION: Bbox,
+    OTXTaskType.ULTRALYTICS_DETECTION: Bbox,
 }
 
 

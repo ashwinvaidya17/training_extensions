@@ -29,8 +29,9 @@ def create_engine(model: MODEL, data: DATA, **kwargs) -> Engine:
     """
     from otx.backend.native.engine import OTXEngine
     from otx.backend.openvino.engine import OVEngine
+    from otx.backend.ultralytics import UltralyticsEngine
 
-    supported_engines = [OTXEngine, OVEngine]
+    supported_engines = [OTXEngine, OVEngine, UltralyticsEngine]
     # Dynamically discover all custom subclasses of Engine
     for child_engines in Engine.__subclasses__():
         if child_engines not in supported_engines:

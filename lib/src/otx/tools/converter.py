@@ -14,14 +14,16 @@ from warnings import warn
 
 import yaml
 from jsonargparse import ArgumentParser, Namespace
+from ultralytics import YOLO
 
 from otx.backend.native.cli.utils import get_otx_root_path
 from otx.backend.native.models.base import DataInputParams, OTXModel
+from otx.backend.ultralytics import OTXUltralyticsDataModule
 from otx.config.data import SamplerConfig, SubsetConfig, TileConfig
 from otx.data.module import OTXDataModule
 from otx.engine import Engine, create_engine
 from otx.tools.auto_configurator import AutoConfigurator
-from otx.types import PathLike
+from otx.types import OTXTaskType, PathLike
 
 RECIPE_PATH = get_otx_root_path() / "recipe"
 
@@ -46,7 +48,7 @@ TEMPLATE_ID_MAPPING = {
     "Custom_Image_Classification_EfficinetNet-B0": {
         "recipe_path": RECIPE_PATH / "classification" / "multi_class_cls" / "efficientnet_b0.yaml",
         "status": ModelStatus.BALANCE,
-        "default": True,
+        "default": False,
     },
     "Custom_Image_Classification_EfficientNet-V2-S": {
         "recipe_path": RECIPE_PATH / "classification" / "multi_class_cls" / "efficientnet_v2.yaml",
@@ -146,6 +148,16 @@ TEMPLATE_ID_MAPPING = {
     },
     "Object_Detection_Deim_DFine_X": {
         "recipe_path": RECIPE_PATH / "detection" / "deim_dfine_x.yaml",
+        "status": ModelStatus.ACTIVE,
+        "default": False,
+    },
+    "YOLO_Ultralytics_v8n": {
+        "recipe_path": RECIPE_PATH / "detection" / "yolo_ultralytics_v8n.yaml",
+        "status": ModelStatus.ACTIVE,
+        "default": True,
+    },
+    "YOLO_Ultralytics_v11n": {
+        "recipe_path": RECIPE_PATH / "detection" / "yolo_ultralytics_v11n.yaml",
         "status": ModelStatus.ACTIVE,
         "default": False,
     },
@@ -402,6 +414,103 @@ def update_augmentations(augmentation_params: dict, config: dict) -> None:
 
 
 class GetiConfigConverter:
+    """Wrapper for Ultralytics and OTX converter."""
+
+    YOLO_CONFIGS: list[str] = ["YOLO_Ultralytics_v8n", "YOLO_Ultralytics_v11n"]
+
+    @staticmethod
+    def convert(config: dict) -> dict:
+        """Get config."""
+        model_manifest_id = config["model_manifest_id"]
+        if model_manifest_id in GetiConfigConverter.YOLO_CONFIGS:
+            return GetiUltralyticsConfigConverter.convert(config)
+        if model_manifest_id in TEMPLATE_ID_MAPPING:
+            return GetiOTXConfigConverter.convert(config)
+
+        msg = f"Model manifest id {model_manifest_id} is not supported."
+        raise ValueError(msg)
+
+    @staticmethod
+    def instantiate(
+        config: dict, work_dir: PathLike | None = None, data_root: PathLike | None = None, **kwargs
+    ) -> tuple[Engine, dict[str, Any]]:
+        """Instantiate an object from the configuration dictionary."""
+        if config["model_manifest_id"] in GetiConfigConverter.YOLO_CONFIGS:
+            return GetiUltralyticsConfigConverter.instantiate(config, work_dir, data_root, **kwargs)
+        if config["model_manifest_id"] in TEMPLATE_ID_MAPPING:
+            return GetiOTXConfigConverter.instantiate(config, work_dir, data_root, **kwargs)
+        msg = f"Model manifest id {config['model_manifest_id']} is not supported."
+        raise ValueError(msg)
+
+    @staticmethod
+    def instantiate_datamodule(config: dict, data_root: PathLike | None = None, **kwargs) -> OTXDataModule:
+        """Instantiate an OTXDataModule with arrow data format."""
+        if config["task"] == OTXTaskType.ULTRALYTICS_DETECTION:
+            return GetiUltralyticsConfigConverter.instantiate_datamodule(config, data_root, **kwargs)
+        if config["task"] in TEMPLATE_ID_MAPPING:
+            return GetiOTXConfigConverter.instantiate_datamodule(config, data_root, **kwargs)
+        msg = f"Model manifest id {config['model_manifest_id']} is not supported."
+        raise ValueError(msg)
+
+
+class GetiUltralyticsConfigConverter:
+    """Convert Geti model manifest to Ultralytics recipe dictionary."""
+
+    @staticmethod
+    def convert(config: dict) -> dict:
+        """Get config."""
+        model_config_path: Path = TEMPLATE_ID_MAPPING[config["model_manifest_id"]]["recipe_path"]  # type: ignore[assignment]
+        config = AutoConfigurator(model_config_path=model_config_path).config
+        GetiUltralyticsConfigConverter._remove_unused_key(config)
+        return config
+
+    @staticmethod
+    def instantiate(
+        config: dict, work_dir: PathLike | None = None, data_root: PathLike | None = None, **kwargs
+    ) -> tuple[Engine, dict[str, Any]]:
+        """Instantiate an object from the configuration dictionary."""
+        model_config = config.pop("model")
+        model = YOLO(model_config["model"])
+        datamodule = GetiUltralyticsConfigConverter.instantiate_datamodule(config, data_root, **kwargs)
+        config_work_dir = config.pop("work_dir", config["engine"].pop("work_dir", None))
+        config["engine"]["work_dir"] = work_dir if work_dir is not None else config_work_dir
+        engine = create_engine(model=model, data=datamodule, **config["engine"])
+        return engine, {"model": model, "datamodule": datamodule}
+
+    @staticmethod
+    def _remove_unused_key(config: dict) -> None:
+        """Remove unused keys from the config dictionary.
+
+        Args:
+            config (dict): The configuration dictionary.
+        """
+        config.pop("config")  # Remove config key that for CLI
+        config["data"].pop("__path__", None)  # Remove __path__ key that for CLI overriding
+
+    @staticmethod
+    def instantiate_datamodule(config: dict, data_root: PathLike | None = None, **kwargs) -> OTXDataModule:
+        """Instantiate an OTXDataModule with arrow data format."""
+        config.update(kwargs)
+        # Instantiate datamodule
+        data_config = config.pop("data")
+        data_config.pop("task")
+        if data_root is not None:
+            data_config["data_root"] = data_root
+
+        train_config = data_config.pop("train_subset")
+        val_config = data_config.pop("val_subset")
+        test_config = data_config.pop("test_subset")
+        return OTXUltralyticsDataModule(
+            train_subset=SubsetConfig(sampler=SamplerConfig(**train_config.pop("sampler", {})), **train_config),
+            val_subset=SubsetConfig(sampler=SamplerConfig(**val_config.pop("sampler", {})), **val_config),
+            test_subset=SubsetConfig(sampler=SamplerConfig(**test_config.pop("sampler", {})), **test_config),
+            tile_config=TileConfig(**data_config.pop("tile_config", {})),
+            task=OTXTaskType.ULTRALYTICS_DETECTION,
+            **data_config,
+        )
+
+
+class GetiOTXConfigConverter:
     """Convert Geti model manifest to OTXv2 recipe dictionary.
 
     Example:
@@ -456,8 +565,8 @@ class GetiConfigConverter:
             model_config_path = model_config_path / ".yaml"
         default_config = AutoConfigurator(model_config_path=model_config_path).config
         if hyper_parameters:
-            GetiConfigConverter._update_params(default_config, hyper_parameters)
-        GetiConfigConverter._remove_unused_key(default_config)
+            GetiOTXConfigConverter._update_params(default_config, hyper_parameters)
+        GetiOTXConfigConverter._remove_unused_key(default_config)
         return default_config
 
     @staticmethod
@@ -469,7 +578,7 @@ class GetiConfigConverter:
                 if "value" in param_info:
                     param_dict[param_name] = param_info["value"]
                 else:
-                    param_dict = param_dict | GetiConfigConverter._get_params(param_info)
+                    param_dict = param_dict | GetiOTXConfigConverter._get_params(param_info)
 
         return param_dict
 
@@ -547,7 +656,7 @@ class GetiConfigConverter:
         Returns:
             tuple: A tuple containing the engine and the train kwargs dictionary.
         """
-        datamodule = GetiConfigConverter.instantiate_datamodule(
+        datamodule = GetiOTXConfigConverter.instantiate_datamodule(
             config=config,
             data_root=data_root,
             **kwargs,
@@ -609,8 +718,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with Path(args.config).open() as f:
         config = yaml.safe_load(f)
-    otx_config = GetiConfigConverter.convert(config=config)
-    engine, train_kwargs = GetiConfigConverter.instantiate(
+    otx_config = GetiOTXConfigConverter.convert(config=config)
+    engine, train_kwargs = GetiOTXConfigConverter.instantiate(
         config=otx_config,
         data_root=args.data_root,
         work_dir=args.work_dir,

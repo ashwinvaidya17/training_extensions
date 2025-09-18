@@ -289,10 +289,10 @@ class OTXEngine(Engine):
             msg = "self.checkpoint should be Path or str at this time."
             raise TypeError(msg)
 
-        best_checkpoint_symlink = Path(self.work_dir) / "best_checkpoint.ckpt"
+        best_checkpoint_symlink = Path(self.work_dir).absolute() / "best_checkpoint.ckpt"
         if best_checkpoint_symlink.is_symlink():
             best_checkpoint_symlink.unlink()
-        best_checkpoint_symlink.symlink_to(self.checkpoint)
+        best_checkpoint_symlink.symlink_to(str(Path(self.checkpoint).resolve()))
 
         return self.trainer.callback_metrics
 

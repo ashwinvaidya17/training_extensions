@@ -37,9 +37,7 @@ from otx.backend.native.utils.utils import (
     remove_state_dict_prefix,
 )
 from otx.config.data import TileConfig
-from otx.data.entity.base import (
-    OTXBatchLossEntity,
-)
+from otx.data.entity.base import OTXBatchLossEntity
 from otx.data.entity.tile import OTXTileBatchDataEntity
 from otx.data.entity.torch import OTXDataBatch, OTXPredBatch
 from otx.metrics import MetricInput, NullMetricCallable
