@@ -292,14 +292,6 @@ class _OTXUltralyticsDetectionPredictor(DetectionPredictor):
             "names": self.datamodule.label_info.label_names,
         }
 
-    def preprocess_batch(self, batch: dict[str, Any]) -> dict[str, Any]:
-        """Preprocess the batch for prediction."""
-        # We already add transforms on top
-        for k, v in batch.items():
-            if isinstance(v, torch.Tensor):
-                batch[k] = v.to(self.device, non_blocking=True)
-        return batch
-
 
 class UltralyticsEngine(Engine):
     """Ultralytics Engine.
@@ -458,9 +450,9 @@ class UltralyticsEngine(Engine):
                 OTXPredBatch(
                     batch_size=1,
                     images=torch.tensor(prediction.orig_img).permute(2, 0, 1).unsqueeze(0),
-                    bboxes=prediction.boxes.xyxy,
-                    scores=prediction.boxes.conf,
-                    labels=prediction.boxes.cls,
+                    bboxes=[prediction.boxes.xyxy],
+                    scores=[prediction.boxes.conf],
+                    labels=[prediction.boxes.cls.to(torch.long)],
                     imgs_info=ImageInfo(
                         img_idx=idx, img_shape=prediction.orig_img.shape, ori_shape=prediction.orig_shape
                     ),
