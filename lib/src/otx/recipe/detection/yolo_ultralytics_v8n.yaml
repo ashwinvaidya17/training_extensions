@@ -2,7 +2,7 @@ task: ULTRALYTICS_DETECTION
 model:
   class_path: ultralytics.YOLO
   init_args:
-    model: yolov8n
+    model: yolov8n.pt
 
 engine:
   device: auto

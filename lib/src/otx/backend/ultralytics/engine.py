@@ -171,6 +171,7 @@ class _OTXUltralyticsDetectionValidator(DetectionValidator):
 
     def _prepare_batch(self, si: int, batch: dict[str, Any]) -> dict[str, Any]:
         """Prepare a batch of images and annotations for validation.
+
         Override to handle 0-dimensional tensor issue.
 
         Args:

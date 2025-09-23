@@ -2,7 +2,7 @@ task: ULTRALYTICS_DETECTION
 model:
   class_path: ultralytics.YOLO
   init_args:
-    model: yolo11n
+    model: yolo11n.pt
 
 callback_monitor: val/map_50
 
