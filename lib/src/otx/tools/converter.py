@@ -435,12 +435,14 @@ class GetiConfigConverter:
         config: dict, work_dir: PathLike | None = None, data_root: PathLike | None = None, **kwargs
     ) -> tuple[Engine, dict[str, Any]]:
         """Instantiate an object from the configuration dictionary."""
-        if config["model_manifest_id"] in GetiConfigConverter.YOLO_CONFIGS:
+        if (
+            config.get("model_manifest_id") in GetiConfigConverter.YOLO_CONFIGS
+            or config.get("task") == OTXTaskType.ULTRALYTICS_DETECTION
+        ):
+            logging.info("Instantiating Ultralytics config converter.")
             return GetiUltralyticsConfigConverter.instantiate(config, work_dir, data_root, **kwargs)
-        if config["model_manifest_id"] in TEMPLATE_ID_MAPPING:
-            return GetiOTXConfigConverter.instantiate(config, work_dir, data_root, **kwargs)
-        msg = f"Model manifest id {config['model_manifest_id']} is not supported."
-        raise ValueError(msg)
+        logging.info("Instantiating OTX config converter.")
+        return GetiOTXConfigConverter.instantiate(config, work_dir, data_root, **kwargs)
 
     @staticmethod
     def instantiate_datamodule(config: dict, data_root: PathLike | None = None, **kwargs) -> OTXDataModule:
@@ -451,6 +453,25 @@ class GetiConfigConverter:
             return GetiOTXConfigConverter.instantiate_datamodule(config, data_root, **kwargs)
         msg = f"Model manifest id {config['model_manifest_id']} is not supported."
         raise ValueError(msg)
+
+    @staticmethod
+    def get_callback_idx(callbacks: list, name: str) -> int:
+        """Return required callbacks index from callback list."""
+        for idx, callback in enumerate(callbacks):
+            if callback["class_path"] == name:
+                return idx
+        return -1
+
+    @staticmethod
+    def _get_params(hyperparameters: dict) -> dict:
+        return GetiOTXConfigConverter._get_params(hyperparameters)
+
+    @staticmethod
+    def _update_params(config: dict, param_dict: dict) -> None:
+        if config["task"] == OTXTaskType.ULTRALYTICS_DETECTION:
+            GetiUltralyticsConfigConverter._update_params(config, param_dict)
+        else:
+            GetiOTXConfigConverter._update_params(config, param_dict)
 
 
 class GetiUltralyticsConfigConverter:
