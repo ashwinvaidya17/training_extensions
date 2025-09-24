@@ -103,9 +103,5 @@ class OTXDatasetFactory:
             from .dataset.keypoint_detection import OTXKeypointDetectionDataset
 
             return OTXKeypointDetectionDataset(**common_kwargs)
-        if task == OTXTaskType.ULTRALYTICS_DETECTION:
-            from otx.backend.ultralytics import OTXUltralyticsDetectionDataset
-
-            return OTXUltralyticsDetectionDataset(**common_kwargs)
 
         raise NotImplementedError(task)

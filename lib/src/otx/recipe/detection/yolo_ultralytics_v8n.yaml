@@ -1,4 +1,4 @@
-task: ULTRALYTICS_DETECTION
+task: DETECTION
 model:
   class_path: ultralytics.YOLO
   init_args:

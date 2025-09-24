@@ -28,10 +28,6 @@ class OTXTaskType(str, Enum):
     ROTATED_DETECTION = "ROTATED_DETECTION"
     KEYPOINT_DETECTION = "KEYPOINT_DETECTION"
 
-    # Ultralytics Detection
-    # ideally this should be in the types of ultralytics. Currently here to avoid circular import.
-    ULTRALYTICS_DETECTION = "ULTRALYTICS_DETECTION"
-
     # Segmentation
     INSTANCE_SEGMENTATION = "INSTANCE_SEGMENTATION"
     SEMANTIC_SEGMENTATION = "SEMANTIC_SEGMENTATION"

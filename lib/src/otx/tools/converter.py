@@ -437,7 +437,7 @@ class GetiConfigConverter:
         """Instantiate an object from the configuration dictionary."""
         if (
             config.get("model_manifest_id") in GetiConfigConverter.YOLO_CONFIGS
-            or config.get("task") == OTXTaskType.ULTRALYTICS_DETECTION
+            or "YOLO" in config["model"]["class_path"]
         ):
             logging.info("Instantiating Ultralytics config converter.")
             return GetiUltralyticsConfigConverter.instantiate(config, work_dir, data_root, **kwargs)
@@ -447,12 +447,9 @@ class GetiConfigConverter:
     @staticmethod
     def instantiate_datamodule(config: dict, data_root: PathLike | None = None, **kwargs) -> OTXDataModule:
         """Instantiate an OTXDataModule with arrow data format."""
-        if config["task"] == OTXTaskType.ULTRALYTICS_DETECTION:
+        if "YOLO" in config["model"]["class_path"]:
             return GetiUltralyticsConfigConverter.instantiate_datamodule(config, data_root, **kwargs)
-        if config["task"] in TEMPLATE_ID_MAPPING:
-            return GetiOTXConfigConverter.instantiate_datamodule(config, data_root, **kwargs)
-        msg = f"Model manifest id {config['model_manifest_id']} is not supported."
-        raise ValueError(msg)
+        return GetiOTXConfigConverter.instantiate_datamodule(config, data_root, **kwargs)
 
     @staticmethod
     def get_callback_idx(callbacks: list, name: str) -> int:
@@ -468,7 +465,7 @@ class GetiConfigConverter:
 
     @staticmethod
     def _update_params(config: dict, param_dict: dict) -> None:
-        if config["task"] == OTXTaskType.ULTRALYTICS_DETECTION:
+        if "YOLO" in config["model"]["class_path"]:
             GetiUltralyticsConfigConverter._update_params(config, param_dict)
         else:
             GetiOTXConfigConverter._update_params(config, param_dict)
@@ -526,7 +523,7 @@ class GetiUltralyticsConfigConverter:
             val_subset=SubsetConfig(sampler=SamplerConfig(**val_config.pop("sampler", {})), **val_config),
             test_subset=SubsetConfig(sampler=SamplerConfig(**test_config.pop("sampler", {})), **test_config),
             tile_config=TileConfig(**data_config.pop("tile_config", {})),
-            task=OTXTaskType.ULTRALYTICS_DETECTION,
+            task=OTXTaskType.DETECTION,
             **data_config,
         )
 

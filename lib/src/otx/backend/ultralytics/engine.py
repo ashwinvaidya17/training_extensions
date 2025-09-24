@@ -308,11 +308,11 @@ class UltralyticsEngine(Engine):
         self,
         model: YOLO,
         data: OTXDataModule,
-        task: OTXTaskType = OTXTaskType.ULTRALYTICS_DETECTION,
+        task: OTXTaskType = OTXTaskType.DETECTION,
         work_dir: PathLike = "./otx-workspace",
     ):
         self._model = model
-        if task == OTXTaskType.ULTRALYTICS_DETECTION:
+        if task == OTXTaskType.DETECTION:
             self.task = "detect"
         else:
             msg = f"Unexpected task type: {task}"
