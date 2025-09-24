@@ -79,7 +79,7 @@ TEMPLATE_ID_MAPPING = {
     "Custom_Object_Detection_Gen3_ATSS": {
         "recipe_path": RECIPE_PATH / "detection" / "atss_mobilenetv2.yaml",
         "status": ModelStatus.BALANCE,
-        "default": True,
+        "default": False,
     },
     "Object_Detection_ResNeXt101_ATSS": {
         "recipe_path": RECIPE_PATH / "detection" / "atss_resnext101.yaml",
@@ -154,7 +154,7 @@ TEMPLATE_ID_MAPPING = {
     "YOLO_Ultralytics_v8n": {
         "recipe_path": RECIPE_PATH / "detection" / "yolo_ultralytics_v8n.yaml",
         "status": ModelStatus.ACTIVE,
-        "default": False,
+        "default": True,
     },
     "YOLO_Ultralytics_v11n": {
         "recipe_path": RECIPE_PATH / "detection" / "yolo_ultralytics_v11n.yaml",
