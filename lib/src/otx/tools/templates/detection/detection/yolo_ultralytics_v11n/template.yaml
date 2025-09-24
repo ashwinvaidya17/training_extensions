@@ -1,10 +1,10 @@
 # Description.
-model_template_id: YOLO_Ultralytics_v8n
-name: Ultralytics_YOLO_8
+model_template_id: YOLO_Ultralytics_v11n
+name: YOLO-Ultralytics-v11n
 task_type: DETECTION
 task_family: VISION
 instantiation: "CLASS"
-summary: Detection using Ultralytics YOLOv8
+summary: Detection using Ultralytics YOLOv11
 application: ~
 
 # Algo backend.

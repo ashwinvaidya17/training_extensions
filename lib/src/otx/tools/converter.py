@@ -154,7 +154,7 @@ TEMPLATE_ID_MAPPING = {
     "YOLO_Ultralytics_v8n": {
         "recipe_path": RECIPE_PATH / "detection" / "yolo_ultralytics_v8n.yaml",
         "status": ModelStatus.ACTIVE,
-        "default": True,
+        "default": False,
     },
     "YOLO_Ultralytics_v11n": {
         "recipe_path": RECIPE_PATH / "detection" / "yolo_ultralytics_v11n.yaml",
