@@ -51,6 +51,8 @@ class _OTXUltralyticsDetectionTrainer(DetectionTrainer):
     ):
         # add save_dir to cfg otherwise it skips the key
         cfg.save_dir = cfg.get("save_dir", overrides.get("save_dir"))
+        cfg.save_json = False
+        cfg.plots = False
         super().__init__(cfg, overrides, _callbacks)
 
     def get_dataloader(self, dataset_path: str, batch_size: int = 16, rank: int = 0, mode: str = "train") -> DataLoader:
@@ -123,6 +125,8 @@ class _OTXUltralyticsDetectionValidator(DetectionValidator):
         _callbacks: dict[str, list] | None = None,
     ):
         args.save_dir = str(save_dir) if save_dir is not None else args.get("save_dir", None)
+        args.save_json = False
+        args.plots = False
         super().__init__(dataloader, save_dir, args, _callbacks)
         self.args.task = "detect"
 
