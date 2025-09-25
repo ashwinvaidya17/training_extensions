@@ -309,9 +309,14 @@ class UltralyticsEngine(Engine):
         model: YOLO,
         data: OTXDataModule,
         task: OTXTaskType = OTXTaskType.DETECTION,
+        checkpoint: PathLike | None = None,
         work_dir: PathLike = "./otx-workspace",
+        **kwargs,
     ):
-        self._model = model
+        if checkpoint is not None:
+            self.model = checkpoint
+        else:
+            self._model = model
         if task == OTXTaskType.DETECTION:
             self.task = "detect"
         else:

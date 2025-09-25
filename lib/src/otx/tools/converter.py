@@ -487,10 +487,10 @@ class GetiUltralyticsConfigConverter:
         config: dict, work_dir: PathLike | None = None, data_root: PathLike | None = None, **kwargs
     ) -> tuple[Engine, dict[str, Any]]:
         """Instantiate an object from the configuration dictionary."""
-        model_config = config.pop("model")
-        model = YOLO(model_config["model"])
+        model_config = config.get("model")
+        model = YOLO(model_config["init_args"]["model"])
         datamodule = GetiUltralyticsConfigConverter.instantiate_datamodule(config, data_root, **kwargs)
-        config_work_dir = config.pop("work_dir", config["engine"].pop("work_dir", None))
+        config_work_dir = config.get("work_dir", config["engine"].get("work_dir", None))
         config["engine"]["work_dir"] = work_dir if work_dir is not None else config_work_dir
         engine = create_engine(model=model, data=datamodule, **config["engine"])
         return engine, {"model": model, "datamodule": datamodule}
