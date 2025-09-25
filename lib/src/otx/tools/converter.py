@@ -496,8 +496,8 @@ class GetiUltralyticsConfigConverter:
         return engine, {
             "model": model,
             "datamodule": datamodule,
-            "callbacks": config.get("callbacks", []),
-            "logger": config.get("logger", []),
+            "callbacks": config.get("callbacks") or [],
+            "logger": config.get("logger") or [],
         }
 
     @staticmethod
