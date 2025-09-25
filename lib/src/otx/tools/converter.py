@@ -493,7 +493,12 @@ class GetiUltralyticsConfigConverter:
         config_work_dir = config.get("work_dir", config["engine"].get("work_dir", None))
         config["engine"]["work_dir"] = work_dir if work_dir is not None else config_work_dir
         engine = create_engine(model=model, data=datamodule, **config["engine"])
-        return engine, {"model": model, "datamodule": datamodule}
+        return engine, {
+            "model": model,
+            "datamodule": datamodule,
+            "callbacks": config.get("callbacks", []),
+            "logger": config.get("logger", []),
+        }
 
     @staticmethod
     def _remove_unused_key(config: dict) -> None:
